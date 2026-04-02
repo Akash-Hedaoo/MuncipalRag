@@ -27,7 +27,7 @@ export async function getUploadedDocuments(_req, res) {
 export async function downloadDocument(req, res) {
   try {
     const docId = req.params.docId?.trim();
-    const filePath = await findUploadedDocument(docId);
+    const filePath = await findUploadedDocumengetUploadedDocumentst(docId);
 
     if (!filePath) {
       return res.status(404).json({

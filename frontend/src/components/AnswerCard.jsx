@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Copy, Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
-const AnswerCard = ({ question, answer, sources, animateTyping = true }) => {
+const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = true }) => {
     const [copied, setCopied] = useState(false);
     const [expandedSources, setExpandedSources] = useState(false);
     const [displayedAnswer, setDisplayedAnswer] = useState('');
@@ -60,7 +60,12 @@ const AnswerCard = ({ question, answer, sources, animateTyping = true }) => {
 
                 <div className="group w-full min-w-0 rounded-[22px] rounded-tl-md border border-slate-200 bg-white/85 px-4 py-4 shadow-[0_20px_60px_rgba(2,6,23,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/6 dark:shadow-[0_20px_60px_rgba(2,6,23,0.18)] sm:rounded-[28px] sm:px-6 sm:py-5">
                     <div className="mb-3 flex items-start justify-between gap-3">
-                        <span className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Response</span>
+                        <div className="space-y-1">
+                            <span className="block text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Response</span>
+                            <span className="block text-[10px] font-semibold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-200">
+                                {mode === 'compliance_review' ? 'Rule Review' : 'Chat Answer'}
+                            </span>
+                        </div>
 
                         <button
                             onClick={handleCopy}
@@ -90,12 +95,7 @@ const AnswerCard = ({ question, answer, sources, animateTyping = true }) => {
 
                             <AnimatePresence>
                                 {expandedSources && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="overflow-hidden"
-                                    >
+                                    <div className="overflow-hidden">
                                         <div className="mt-4 space-y-3">
                                             {sources.map((src, idx) => (
                                                 <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-white/8 dark:bg-slate-950/35">
@@ -107,7 +107,7 @@ const AnswerCard = ({ question, answer, sources, animateTyping = true }) => {
                                                 </div>
                                             ))}
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 )}
                             </AnimatePresence>
                         </div>

@@ -154,6 +154,10 @@ Notes:
 - `query` is required
 - `history` is optional
 - allowed history roles are `user` and `model`
+- optional `mode` supports:
+  - `chat` for normal question-answer flow
+  - `compliance_review` for checking a long submission against indexed rules
+- when `mode` is `compliance_review`, send `submission` instead of `query`
 
 Success response:
 
@@ -176,6 +180,62 @@ Success response:
 Common errors:
 - `400` missing query
 - `500` embedding, Pinecone, Groq, or server error
+
+### `POST /api/query` with compliance review mode
+
+Review a long user submission such as a tender, builder scope, checklist, or process note against the indexed rule documents.
+
+Request body:
+
+```json
+{
+  "mode": "compliance_review",
+  "submission": "1. Builder must provide fire exit width of 1.5m\n2. Temporary power connection is optional\n3. Water tank capacity is 20000 litres",
+  "history": []
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "mode": "compliance_review",
+  "answer": "Overall compliance: 67%\nSummary: ...\n\nWhat is correct:\n- ...\n\nWhat is wrong or needs correction:\n- ...\n\nLine-by-line review:\n1. [CORRECT - 100%] ...",
+  "review": {
+    "overallPercentage": 67,
+    "summary": "Short compliance summary.",
+    "correctItems": ["Requirement 1 matches the rules."],
+    "wrongItems": ["Requirement 2 is not allowed under the rules."],
+    "lineReviews": [
+      {
+        "lineNumber": 1,
+        "lineText": "Builder must provide fire exit width of 1.5m",
+        "status": "correct",
+        "percentage": 100,
+        "explanation": "This matches the indexed fire safety rule.",
+        "supportingRule": "Minimum fire exit width must be 1.5m.",
+        "source": "fire_rules.pdf",
+        "page": 8
+      }
+    ]
+  },
+  "sources": [
+    {
+      "page": 8,
+      "section": "Match 1",
+      "text": "Minimum fire exit width must be 1.5m.",
+      "score": 0.94,
+      "source": "fire_rules.pdf"
+    }
+  ]
+}
+```
+
+Notes:
+- best results come when the submission is written as separate lines or numbered points
+- the API currently reviews up to the first 25 non-empty lines
+- the response `answer` is already formatted as a plain text audit for direct chat display
 
 ## Admin
 

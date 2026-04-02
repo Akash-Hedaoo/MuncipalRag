@@ -1,22 +1,39 @@
-import { answerQuestion } from "../services/ragService.js";
+import {
+  analyzeSubmissionAgainstRules,
+  answerQuestion,
+} from "../services/ragService.js";
 import UserChat from "../models/UserChat.js";
 
 export async function queryKnowledgeBase(req, res) {
   try {
+    const mode = req.body?.mode?.trim() || "chat";
     const query = req.body?.query?.trim();
+    const submission = req.body?.submission?.trim();
     const history = req.body?.history ?? [];
 
-    if (!query) {
+    if (mode === "compliance_review" && !submission) {
+      return res.status(400).json({
+        success: false,
+        error: "submission is required when mode is compliance_review.",
+      });
+    }
+
+    if (mode !== "compliance_review" && !query) {
       return res.status(400).json({
         success: false,
         error: "Query is required.",
       });
     }
 
-    const result = await answerQuestion(query, history);
+    const result =
+      mode === "compliance_review"
+        ? await analyzeSubmissionAgainstRules(submission, history)
+        : await answerQuestion(query, history);
+    const userMessage = mode === "compliance_review" ? submission : query;
 
     const chatItem = {
-      question: query,
+      mode,
+      question: userMessage,
       answer: result.answer,
       sources: result.sources ?? [],
       askedAt: new Date(),
@@ -38,8 +55,10 @@ export async function queryKnowledgeBase(req, res) {
 
     return res.json({
       success: true,
+      mode,
       answer: result.answer,
       sources: result.sources,
+      review: result.review,
       chat: chatItem,
     });
   } catch (error) {

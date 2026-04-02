@@ -110,28 +110,57 @@ const AdminUpload = () => {
   };
 
   return (
-    <section className="glass-panel rounded-[28px] p-3.5 shadow-[0_24px_64px_rgba(2,8,23,0.42)] sm:p-5">
-      <div className="mb-5 rounded-[24px] border border-slate-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-slate-950/40">
+    <section className="glass-panel w-full flex-1 rounded-[28px] p-3.5 shadow-[0_24px_64px_rgba(2,8,23,0.42)] sm:p-5">
+      <div className="mb-5 rounded-[24px] border border-slate-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-slate-950/40 sm:p-5">
         <p className="text-xs uppercase tracking-[0.28em] text-teal-700/75 dark:text-teal-200/75">Admin Workspace</p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white sm:text-2xl">Document management</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Signed in as {user?.fullName}. Only admin accounts can upload, process, and download indexed municipal PDFs.
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs uppercase tracking-[0.24em] text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-slate-400">
+          <div className="w-fit rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs uppercase tracking-[0.24em] text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-slate-400">
             role: {user?.role}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Indexed Files</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{documents.length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Selected File</p>
+            <p className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-white">{file?.name || 'No file selected'}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Current Status</p>
+            <p className="mt-2 text-sm font-medium capitalize text-slate-900 dark:text-white">{status.replace('_', ' ')}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Accepted Type</p>
+            <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">PDF only</p>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.9fr)]">
         <div className="rounded-[24px] border border-slate-200/80 bg-white/65 p-4 sm:p-5 dark:border-white/10 dark:bg-white/4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700/75 dark:text-teal-200/75">Upload Area</p>
+              <h3 className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Dropzone</h3>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Upload a clean text-based municipal PDF and the backend will process, chunk, and index it for the chatbot.
+            </p>
+          </div>
+
           <div
             {...getRootProps()}
             className={cn(
-              'group flex min-h-[16rem] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed p-5 text-center transition-all duration-300 sm:min-h-[19rem] sm:p-6',
+              'group flex min-h-[16rem] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed p-5 text-center transition-all duration-300 sm:min-h-[18rem] sm:p-6 lg:min-h-[22rem]',
               isDragActive
                 ? 'border-teal-300 bg-teal-300/10 shadow-[0_24px_60px_rgba(45,212,191,0.12)]'
                 : 'border-slate-300 bg-white hover:border-teal-300 hover:bg-teal-50/40 dark:border-white/14 dark:bg-slate-950/35 dark:hover:border-teal-200/35 dark:hover:bg-slate-950/50',
@@ -144,12 +173,12 @@ const AdminUpload = () => {
             </div>
 
             {file ? (
-              <div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-white">{file.name}</p>
+              <div className="w-full max-w-lg">
+                <p className="break-words text-lg font-semibold text-slate-900 dark:text-white">{file.name}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
             ) : (
-              <div>
+              <div className="max-w-lg">
                 <p className="text-lg font-semibold text-slate-900 dark:text-white">Drag and drop your PDF here</p>
                 <p className="mt-2.5 text-sm leading-6 text-slate-600 dark:text-slate-300">or click to browse and upload a clean text-based file</p>
               </div>
@@ -160,13 +189,13 @@ const AdminUpload = () => {
         <div className="flex flex-col gap-4">
           <div className="rounded-[24px] border border-slate-200/80 bg-white/65 p-4 sm:p-5 dark:border-white/10 dark:bg-slate-950/40">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700/75 dark:text-teal-200/75">Upload Workflow</p>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
               {[
                 'Upload the PDF from the admin panel',
                 'Backend extracts text and creates chunks',
                 'Embeddings are stored in Pinecone for retrieval',
               ].map((step, index) => (
-                <div key={step} className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
+                <div key={step} className="flex h-full items-start gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-sm font-semibold text-white dark:bg-white dark:text-slate-950">
                     {index + 1}
                   </div>
@@ -197,7 +226,7 @@ const AdminUpload = () => {
           <button
             onClick={handleUploadAndProcess}
             disabled={!file || status === 'uploading' || status === 'processing'}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-teal-300 via-cyan-300 to-amber-200 px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-teal-300 via-cyan-300 to-amber-200 px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {(status === 'uploading' || status === 'processing') ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />}
             {(status === 'uploading' || status === 'processing') ? 'Processing...' : 'Upload & Index'}
@@ -205,7 +234,7 @@ const AdminUpload = () => {
         </div>
       </div>
 
-      <div className="mt-5 rounded-[24px] border border-slate-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-slate-950/40">
+      <div className="mt-5 rounded-[24px] border border-slate-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-slate-950/40 sm:p-5">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Uploaded PDFs</h3>
           <span className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
@@ -223,7 +252,7 @@ const AdminUpload = () => {
             No uploaded PDFs yet.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {documents.map((document) => (
               <button
                 key={document.docId}
@@ -231,8 +260,11 @@ const AdminUpload = () => {
                 onClick={() => handleDownload(document)}
                 className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-teal-300 hover:bg-teal-50/40 dark:border-white/8 dark:bg-white/5 dark:hover:border-teal-200/35 dark:hover:bg-white/8"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{document.fileName}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    {(document.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
                 <Download size={16} className="shrink-0 text-slate-500 dark:text-slate-300" />
               </button>

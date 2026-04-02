@@ -32,6 +32,12 @@ const sourceSchema = new mongoose.Schema(
 
 const chatItemSchema = new mongoose.Schema(
   {
+    mode: {
+      type: String,
+      enum: ["chat", "compliance_review"],
+      default: "chat",
+      trim: true,
+    },
     question: {
       type: String,
       required: true,
