@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Copy, Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, BookOpen, Volume2, Square } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import api from '../lib/api.js';
 
 const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = true }) => {
     const [copied, setCopied] = useState(false);
     const [expandedSources, setExpandedSources] = useState(false);
     const [displayedAnswer, setDisplayedAnswer] = useState('');
     const [isTyping, setIsTyping] = useState(true);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isSpeechLoading, setIsSpeechLoading] = useState(false);
+    const [audioError, setAudioError] = useState('');
+    const audioRef = useRef(null);
 
-    // Typing effect
     useEffect(() => {
         if (!animateTyping) {
             setDisplayedAnswer(answer);
@@ -21,7 +25,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
         setIsTyping(true);
         setDisplayedAnswer('');
 
-        const speed = 15; // ms per char
+        const speed = 15;
 
         const typeWriter = () => {
             if (i < answer.length) {
@@ -34,8 +38,17 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
         };
 
         typeWriter();
-        return () => { i = answer.length; }; // cleanup
+        return () => {
+            i = answer.length;
+        };
     }, [answer, animateTyping]);
+
+    useEffect(() => () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+    }, []);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(answer);
@@ -43,7 +56,49 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const isNotAvailable = answer === "Not available in rules";
+    const handleSpeak = async () => {
+        if (isSpeaking && audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
+            setIsSpeaking(false);
+            return;
+        }
+
+        setAudioError('');
+        setIsSpeechLoading(true);
+
+        try {
+            const response = await api.post('/api/speech/synthesize', { text: answer });
+
+            if (!response.data?.success || !response.data?.audioBase64) {
+                throw new Error(response.data?.error || 'Unable to generate speech audio.');
+            }
+
+            const src = `data:${response.data.mimeType || 'audio/wav'};base64,${response.data.audioBase64}`;
+            const audio = new Audio(src);
+            audioRef.current = audio;
+            audio.onplay = () => setIsSpeaking(true);
+            audio.onended = () => {
+                setIsSpeaking(false);
+                audioRef.current = null;
+            };
+            audio.onerror = () => {
+                setAudioError('Audio playback failed. Please try again.');
+                setIsSpeaking(false);
+                audioRef.current = null;
+            };
+
+            await audio.play();
+        } catch (error) {
+            setAudioError(error.response?.data?.error || error.message || 'Unable to play speech right now.');
+            setIsSpeaking(false);
+        } finally {
+            setIsSpeechLoading(false);
+        }
+    };
+
+    const isNotAvailable = answer === 'Not available in rules';
 
     return (
         <div className="space-y-5">
@@ -67,20 +122,33 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                             </span>
                         </div>
 
-                        <button
-                            onClick={handleCopy}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 sm:h-9 sm:w-9 sm:opacity-0 group-hover:sm:opacity-100 dark:hover:bg-white/8 dark:hover:text-white"
-                            aria-label="Copy answer"
-                            title="Copy answer"
-                        >
-                            {copied ? <Check size={16} className="text-emerald-300" /> : <Copy size={16} />}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={handleSpeak}
+                                disabled={isSpeechLoading}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 sm:opacity-0 group-hover:sm:opacity-100 dark:hover:bg-white/8 dark:hover:text-white"
+                                aria-label={isSpeaking ? 'Stop speaking answer' : 'Speak answer'}
+                                title={isSpeaking ? 'Stop' : 'Listen'}
+                            >
+                                {isSpeaking ? <Square size={16} /> : <Volume2 size={16} />}
+                            </button>
+                            <button
+                                onClick={handleCopy}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 sm:h-9 sm:w-9 sm:opacity-0 group-hover:sm:opacity-100 dark:hover:bg-white/8 dark:hover:text-white"
+                                aria-label="Copy answer"
+                                title="Copy answer"
+                            >
+                                {copied ? <Check size={16} className="text-emerald-300" /> : <Copy size={16} />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className={`prose prose-sm max-w-none break-words text-sm leading-relaxed dark:prose-invert sm:prose-base ${isNotAvailable ? 'text-slate-500 italic dark:text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
                         <ReactMarkdown>{displayedAnswer}</ReactMarkdown>
                         {isTyping && <span className="ml-1 inline-block h-4 w-1.5 animate-pulse align-middle bg-teal-300"></span>}
                     </div>
+
+                    {audioError && <p className="mt-3 text-xs text-rose-600 dark:text-rose-300">{audioError}</p>}
 
                     {!isTyping && sources && sources.length > 0 && !isNotAvailable && (
                         <div className="mt-6 border-t border-slate-200 pt-4 dark:border-white/8">

@@ -11,8 +11,30 @@ dotenv.config({ path: path.join(backendRoot, ".env") });
 export const PORT = Number(process.env.PORT || 5000);
 export const GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001";
 export const EMBEDDING_DIMENSION = 768;
-export const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+
+function normalizeEnvModel(value, fallback) {
+  const raw = (value || fallback).trim();
+  return raw
+    .replace(/^['"]+/, "")
+    .replace(/['"]+$/, "")
+    .replace(/;+\s*$/, "");
+}
+
+export const GROQ_MODEL = normalizeEnvModel(
+  process.env.GROQ_MODEL,
+  "llama-3.1-8b-instant",
+);
 export const UPLOAD_DIR = path.join(backendRoot, "uploads");
+export const GEMINI_TRANSCRIPTION_MODEL =
+  normalizeEnvModel(
+    process.env.GEMINI_TRANSCRIPTION_MODEL,
+    "models/gemini-2.5-flash",
+  );
+export const GEMINI_TTS_MODEL =
+  normalizeEnvModel(
+    process.env.GEMINI_TTS_MODEL,
+    "models/gemini-2.5-flash-preview-tts",
+  );
 
 export function validateEnvironment() {
   const requiredVars = [

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ClipboardCheck, History, Loader2, MessageSquareText, RefreshCw, Search, X } from 'lucide-react';
+import { ClipboardCheck, History, Loader2, MessageSquareText, Mic, MicOff, RefreshCw, Search, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import api from '../lib/api.js';
 import AnswerCard from './AnswerCard.jsx';
@@ -16,8 +16,16 @@ const SearchArea = () => {
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState('');
   const [lastSubmittedMode, setLastSubmittedMode] = useState('chat');
   const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [speechError, setSpeechError] = useState('');
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [voiceDraftNotice, setVoiceDraftNotice] = useState('');
   const inputRef = useRef(null);
   const chatViewportRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const chunksRef = useRef([]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -26,6 +34,27 @@ const SearchArea = () => {
   useEffect(() => {
     inputRef.current?.focus();
   }, [mode]);
+
+  useEffect(() => {
+    const supportsMediaRecording =
+      typeof navigator !== 'undefined' &&
+      typeof window !== 'undefined' &&
+      Boolean(navigator.mediaDevices?.getUserMedia) &&
+      typeof window.MediaRecorder !== 'undefined';
+
+    setIsSpeechSupported(supportsMediaRecording);
+
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -133,7 +162,100 @@ const SearchArea = () => {
 
   const handleSearch = async (event) => {
     event?.preventDefault();
+    setVoiceDraftNotice('');
     await askQuestion(query, mode);
+  };
+
+  const stopMediaStream = () => {
+    if (!mediaStreamRef.current) return;
+    mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  };
+
+  const blobToBase64 = (blob) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        resolve(result.split(',')[1] || '');
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const transcribeAndSubmit = async (blob) => {
+    setIsTranscribing(true);
+    try {
+      const audioBase64 = await blobToBase64(blob);
+      if (!audioBase64) {
+        throw new Error('Failed to read recorded audio.');
+      }
+
+      const response = await api.post('/api/speech/transcribe', {
+        audioBase64,
+        mimeType: blob.type || 'audio/webm',
+      });
+
+      const transcript = response.data?.transcript?.trim() || '';
+      if (!transcript) {
+        throw new Error('No speech was detected in the recording.');
+      }
+
+      setQuery(transcript);
+      setVoiceDraftNotice('Voice converted to text. Press Enter or click Ask Now to submit.');
+      inputRef.current?.focus();
+    } catch (error) {
+      setSpeechError(error.response?.data?.error || error.message || 'Voice transcription failed. Please try again.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const toggleVoiceInput = async () => {
+    if (!isSpeechSupported || isLoading || isTranscribing) return;
+    setSpeechError('');
+
+    if (isRecording) {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstart = () => setIsRecording(true);
+      recorder.onerror = () => {
+        setSpeechError('Microphone recording failed. Please try again.');
+        setIsRecording(false);
+        stopMediaStream();
+      };
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        chunksRef.current = [];
+        stopMediaStream();
+        await transcribeAndSubmit(audioBlob);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+    } catch (_error) {
+      setSpeechError('Microphone permission is blocked. Please allow access and try again.');
+      setIsRecording(false);
+      stopMediaStream();
+    }
   };
 
   const historyPanel = (
@@ -263,6 +385,14 @@ const SearchArea = () => {
 
             {isLoading && (
               <div className={`flex flex-col gap-5 ${messages.length === 0 ? 'min-h-[14rem] justify-center sm:min-h-[16rem]' : 'mt-8'}`}>
+                <div className="rounded-2xl border border-teal-200/70 bg-gradient-to-r from-teal-100 via-cyan-100 to-amber-100 px-4 py-5 text-center shadow-[0_16px_40px_rgba(20,184,166,0.16)] dark:border-teal-200/20 dark:bg-gradient-to-r dark:from-teal-500/20 dark:via-cyan-500/20 dark:to-amber-400/20">
+                  <p className="text-[1.1rem] font-extrabold uppercase tracking-[0.24em] text-slate-900 dark:text-white sm:text-[1.35rem]">
+                    Processing Your Query...
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Retrieving rule context and generating your response
+                  </p>
+                </div>
                 <div className="flex justify-end">
                   <div className="max-w-[80%] rounded-[20px] rounded-tr-md bg-gradient-to-r from-teal-500 to-cyan-400 px-4 py-3.5 text-sm font-medium text-slate-950 shadow-[0_18px_45px_rgba(34,211,238,0.2)]">
                     {lastSubmittedQuery || query}
@@ -316,7 +446,10 @@ const SearchArea = () => {
                 <textarea
                   ref={inputRef}
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setVoiceDraftNotice('');
+                  }}
                   placeholder={'Paste the tender, builder scope, or checklist here.\nUse one point per line for the best line-by-line review.'}
                   disabled={isLoading}
                   rows={5}
@@ -327,12 +460,29 @@ const SearchArea = () => {
                   ref={inputRef}
                   type="text"
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setVoiceDraftNotice('');
+                  }}
                   placeholder="Ask about permits, taxes, zoning, water supply rules..."
                   disabled={isLoading}
                   className="min-h-11 min-w-0 flex-1 rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-400 disabled:opacity-50 dark:border-white/8 dark:bg-slate-950/45 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-teal-300/40"
                 />
               )}
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                disabled={!isSpeechSupported || isLoading || isTranscribing}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-[16px] border px-4 py-3 text-sm font-medium transition ${
+                  isRecording
+                    ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-300/30 dark:bg-rose-500/15 dark:text-rose-100'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50 dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:bg-white/10'
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                aria-label={isRecording ? 'Stop microphone' : 'Start microphone'}
+                title={isRecording ? 'Stop voice input' : 'Speak your query'}
+              >
+                {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
               <button
                 type="submit"
                 disabled={!query.trim() || isLoading}
@@ -347,6 +497,20 @@ const SearchArea = () => {
                 ? 'Paste structured lines for percentage scoring, wrong points, and line-by-line compliance feedback'
                 : 'RAG system powered by Gemini embeddings and Pinecone retrieval'}
             </p>
+            {speechError && (
+              <p className="mt-2 px-2 text-xs text-rose-600 dark:text-rose-300">{speechError}</p>
+            )}
+            {voiceDraftNotice && (
+              <p className="mt-2 px-2 text-xs font-semibold tracking-wide text-teal-700 dark:text-teal-200">{voiceDraftNotice}</p>
+            )}
+            {isTranscribing && (
+              <p className="mt-2 px-2 text-xs text-slate-500 dark:text-slate-400">Transcribing your voice...</p>
+            )}
+            {!isSpeechSupported && (
+              <p className="mt-2 px-2 text-xs text-slate-500 dark:text-slate-400">
+                Voice input is not supported in this browser.
+              </p>
+            )}
           </form>
         </div>
       </div>
