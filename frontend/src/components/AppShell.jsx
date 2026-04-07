@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  ChevronLeft,
+  ChevronRight,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -11,109 +13,170 @@ import {
   UserCircle2,
   X,
 } from 'lucide-react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 
 const AppShell = ({ darkMode, onToggleDarkMode }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const location = useLocation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/chat', label: 'Chat', icon: MessageSquareText },
-    ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin Uploads', icon: ShieldCheck }] : []),
+    ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
+
+  const pageTitle = useMemo(() => {
+    if (location.pathname.startsWith('/chat')) return 'Chat Workspace';
+    if (location.pathname.startsWith('/admin')) return 'Admin Uploads';
+    return 'Dashboard';
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
   };
 
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.2),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_44%,_#f8fafc_100%)] text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_24%),linear-gradient(180deg,_#07111f_0%,_#09172a_44%,_#050b14_100%)] dark:text-slate-50">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:120px_120px] opacity-30 dark:opacity-20" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.22),_transparent_58%)] blur-3xl dark:bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.35),_transparent_58%)]" />
+  const sidebarContent = (
+    <>
+      <div className="flex items-center gap-3 border-b border-[#ebe5dc] px-4 py-4 dark:border-[#5a3c2f]">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-moss-600 text-white dark:bg-[#fde6d8] dark:text-[#bf6336]">
+          <FileText size={18} />
+        </div>
+        {!isSidebarCollapsed && (
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280] dark:text-[#c8a99a]">MuniRules</p>
+            <p className="truncate text-base font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">RAG Assistant</p>
+          </div>
+        )}
+      </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1380px] flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
-        <header className="glass-panel mb-5 rounded-[24px] px-4 py-3.5 sm:px-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-300 via-cyan-300 to-amber-200 text-slate-950 shadow-[0_18px_45px_rgba(20,184,166,0.25)]">
-                <FileText size={20} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.32em] text-teal-700/80 dark:text-teal-200/80">Knowledge Engine</p>
-                <h1 className="truncate text-lg font-semibold tracking-[0.01em] text-slate-900 dark:text-white sm:text-[1.75rem]">MuniRules RAG</h1>
-              </div>
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {navItems.map(({ to, label, icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className={({ isActive }) =>
+              `group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                isActive
+                  ? 'bg-moss-600 text-white dark:bg-[#fde6d8] dark:text-[#bf6336]'
+                  : 'text-[#6b7280] hover:bg-moss-100 hover:text-moss-700 dark:text-[#d7b8a7] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]'
+              }`
+            }
+            title={isSidebarCollapsed ? label : undefined}
+          >
+            {React.createElement(icon, { size: 18 })}
+            {!isSidebarCollapsed && <span className="font-medium">{label}</span>}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="border-t border-[#ebe5dc] p-3 dark:border-[#5a3c2f]">
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-moss-600 text-white dark:bg-[#fde6d8] dark:text-[#bf6336]">
+            <UserCircle2 size={16} />
+          </div>
+          {!isSidebarCollapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">{user?.fullName}</p>
+              <p className="truncate text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">{user?.role}</p>
             </div>
+          )}
+        </div>
 
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onToggleDarkMode}
+            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-[#e2ddd4] bg-cream-50 text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 dark:border-[#5a3c2f] dark:bg-[#2f1e16] dark:text-[#d7b8a7] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]"
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          {!isSidebarCollapsed && (
+            <button
+              onClick={handleLogout}
+              className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-[#f3d8c7] bg-moss-100 px-3 text-sm font-medium text-moss-700 transition hover:bg-[#f3d6c5] hover:text-moss-700 dark:border-[#5a3c2f] dark:bg-[#3a2419] dark:text-[#f5d6c4] dark:hover:bg-[#4b2f21]"
+            >
+              <LogOut size={15} />
+              Logout
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-cream-100 text-[#1a1a1a] dark:bg-[#0d1612] dark:text-[#f3e4db]">
+      <aside
+        className={`hidden border-r border-[#ebe5dc] bg-cream-50 transition-[width] duration-200 dark:border-[#5a3c2f] dark:bg-[#2a1a13] lg:flex lg:flex-col ${
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        <div className="absolute left-full top-6 z-10 -ml-3">
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#e2ddd4] bg-cream-50 text-[#6b7280] shadow-sm transition hover:text-[#1a1a1a] dark:border-[#5a3c2f] dark:bg-[#2a1a13] dark:text-[#d7b8a7] dark:hover:text-[#f3e4db]"
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        </div>
+        {sidebarContent}
+      </aside>
+
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[#ebe5dc] bg-cream-50/95 px-4 backdrop-blur md:px-6 dark:border-[#5a3c2f] dark:bg-[#2a1a13]/90">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsMobileNavOpen((current) => !current)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200/70 bg-white/70 text-slate-700 backdrop-blur-xl transition hover:bg-white lg:hidden dark:border-white/10 dark:bg-white/6 dark:text-slate-200"
-              aria-label="Toggle navigation"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 lg:hidden dark:border-[#5a3c2f] dark:text-[#d7b8a7] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]"
+              aria-label="Open navigation"
             >
-              {isMobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+              <Menu size={18} />
             </button>
-          </div>
-
-          <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <nav className={`${isMobileNavOpen ? 'flex' : 'hidden'} flex-col gap-2 rounded-2xl border border-slate-200/70 bg-white/70 p-1.5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 lg:flex lg:flex-row lg:flex-wrap`}>
-              {navItems.map(({ to, label, icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setIsMobileNavOpen(false)}
-                  className={({ isActive }) =>
-                    `flex min-h-11 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-slate-900 text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] dark:bg-white dark:text-slate-950 dark:shadow-[0_10px_25px_rgba(255,255,255,0.18)]'
-                        : 'text-slate-600 hover:bg-slate-900/6 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white'
-                    }`
-                  }
-                >
-                  {React.createElement(icon, { size: 16 })}
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </nav>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
-              <div className="flex min-h-11 items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-2.5 backdrop-blur-xl dark:border-white/10 dark:bg-white/6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950">
-                  <UserCircle2 size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{user?.fullName}</p>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{user?.role}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={onToggleDarkMode}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/70 bg-white/70 p-0 text-slate-700 backdrop-blur-xl transition hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:bg-white/12 dark:hover:text-white"
-                aria-label="Toggle theme"
-                title="Toggle theme"
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/70 bg-white/70 px-4 text-sm font-medium text-slate-700 backdrop-blur-xl transition hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:bg-white/12 dark:hover:text-white"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">Workspace</p>
+              <h1 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">{pageTitle}</h1>
             </div>
           </div>
         </header>
 
-        <main className="flex flex-1 min-h-0">
+        <main className="flex flex-1 min-h-0 overflow-hidden p-4 md:p-6">
           <Outlet />
         </main>
       </div>
+
+      {isMobileSidebarOpen && (
+        <>
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            aria-label="Close navigation overlay"
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[#ebe5dc] bg-cream-50 shadow-xl lg:hidden dark:border-[#5a3c2f] dark:bg-[#2a1a13]">
+            <div className="flex items-center justify-end border-b border-[#ebe5dc] p-3 dark:border-[#5a3c2f]">
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 dark:border-[#5a3c2f] dark:text-[#d7b8a7] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]"
+                aria-label="Close navigation"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
     </div>
   );
 };

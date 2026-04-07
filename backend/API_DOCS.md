@@ -8,6 +8,21 @@ http://localhost:5000
 
 All responses are JSON unless noted otherwise.
 
+## Setup (Backend Install)
+
+Use this if `npm i` fails on another machine due to dependency resolution issues:
+
+```bash
+cd backend
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install --legacy-peer-deps @google/generative-ai@0.24.1 @langchain/community@1.1.25 @langchain/core@1.1.36 @langchain/google-genai@2.1.26 @langchain/pinecone@1.0.1 @langchain/textsplitters@1.0.1 @pinecone-database/pinecone@7.1.0 axios@1.14.0 bcryptjs@3.0.3 cors@2.8.6 dotenv@17.3.1 express@5.2.1 jsonwebtoken@9.0.3 mongoose@9.3.3 multer@2.1.1 pdf-parse@1.1.4 readline-sync@1.4.10
+npm install -D nodemon@3.1.10
+```
+
+Recommended runtime:
+- Node.js 20 LTS or 22 LTS
+
 ## Auth
 
 ### `POST /api/auth/register`

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowRight, FileStack, LayoutDashboard, MessageSquareText, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Clock3, MessageSquareText, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import { useAuth } from '../hooks/useAuth.js';
@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth.js';
 const DashboardPage = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ chats: 0, documents: 0 });
+  const [recentChats, setRecentChats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,12 +23,14 @@ const DashboardPage = () => {
         }
 
         const [historyResponse, documentsResponse] = await Promise.all(requests);
+        const chats = historyResponse.data.chats || [];
 
         if (!isCancelled) {
           setStats({
-            chats: historyResponse.data.chats?.length || 0,
+            chats: chats.length,
             documents: documentsResponse?.data?.documents?.length || 0,
           });
+          setRecentChats(chats.slice(-5).reverse());
         }
       } catch (error) {
         console.error(error);
@@ -45,129 +48,112 @@ const DashboardPage = () => {
     };
   }, [user?.role]);
 
-  const quickLinks = [
-    {
-      to: '/chat',
-      title: 'Open chat workspace',
-      description: 'Ask questions, continue user conversations, and review saved answers.',
-      icon: MessageSquareText,
-    },
-    ...(user?.role === 'admin'
-      ? [
-          {
-            to: '/admin',
-            title: 'Open admin uploads',
-            description: 'Upload fresh PDFs and manage the indexed municipal knowledge base.',
-            icon: ShieldCheck,
-          },
-        ]
-      : []),
-  ];
+  const quickActions = useMemo(
+    () => [
+      {
+        to: '/chat',
+        title: 'Ask new question',
+        description: 'Open chat workspace and query your indexed rules.',
+        icon: MessageSquareText,
+      },
+      ...(user?.role === 'admin'
+        ? [
+            {
+              to: '/admin',
+              title: 'Upload rule documents',
+              description: 'Add fresh PDFs to keep retrieval up to date.',
+              icon: ShieldCheck,
+            },
+          ]
+        : []),
+    ],
+    [user?.role],
+  );
 
   return (
-    <section className="space-y-4">
-      <div className="glass-panel rounded-[26px] p-3.5 sm:p-4">
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[22px] border border-slate-200/80 bg-white/70 p-4.5 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
-            <p className="text-xs uppercase tracking-[0.32em] text-teal-700/75 dark:text-teal-200/80">Dashboard</p>
-            <h2 className="mt-2.5 text-[1.8rem] font-semibold tracking-[0.01em] text-slate-900 dark:text-white sm:text-[2rem]">
-              Workspace overview for {user?.fullName}
-            </h2>
-            <p className="mt-3 max-w-none text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Use the navbar to move between your dashboard, chat assistant, and admin tools. The portal now separates common user and admin flows while keeping chat history linked to the logged-in account.
-            </p>
+    <section className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="flex min-h-0 flex-col gap-4">
+        <div className="premium-card rounded-xl p-5 dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">Overview</p>
+          <h2 className="mt-2 text-2xl font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">Welcome back, {user?.fullName}</h2>
+          <p className="mt-2 max-w-2xl text-sm text-[#6b7280] dark:text-[#d7b8a7]">
+            This workspace gives you fast access to conversations, uploaded rule documents, and daily actions.
+          </p>
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link
-                to="/chat"
-                className="inline-flex items-center gap-2 rounded-[15px] bg-slate-900 px-4.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-              >
-                Go to chat
-                <ArrowRight size={16} />
-              </Link>
-              {user?.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  className="inline-flex items-center gap-2 rounded-[15px] border border-slate-200 bg-white px-4.5 py-2 text-sm font-semibold text-slate-900 transition hover:border-teal-300 hover:bg-teal-50 dark:border-white/10 dark:bg-white/6 dark:text-white dark:hover:bg-white/10"
-                >
-                  Open admin panel
-                </Link>
-              )}
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="premium-surface rounded-lg px-4 py-3 dark:border-[#5a3c2f] dark:bg-[#3a2419]">
+              <p className="text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">Saved chats</p>
+              <p className="mt-1 text-2xl font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">{isLoading ? '...' : stats.chats}</p>
+            </div>
+            <div className="premium-surface rounded-lg px-4 py-3 dark:border-[#5a3c2f] dark:bg-[#3a2419]">
+              <p className="text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">
+                {user?.role === 'admin' ? 'Indexed PDFs' : 'Role'}
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">
+                {user?.role === 'admin' ? (isLoading ? '...' : stats.documents) : user?.role}
+              </p>
+            </div>
+            <div className="premium-surface rounded-lg px-4 py-3 dark:border-[#5a3c2f] dark:bg-[#3a2419]">
+              <p className="text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">Workspace</p>
+              <p className="mt-1 text-2xl font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">Active</p>
             </div>
           </div>
+        </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-[22px] border border-slate-200/80 bg-white/70 p-4.5 dark:border-white/10 dark:bg-slate-950/35">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-300 via-cyan-300 to-amber-200 text-slate-950">
-                  <MessageSquareText size={20} />
+        <div className="premium-card rounded-xl p-5 dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+          <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">Quick actions</h3>
+          <div className="mt-3 grid gap-3">
+            {quickActions.map(({ to, title, description, icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="premium-surface group flex items-center justify-between rounded-lg px-4 py-3 transition hover:border-[#f1d2bf] hover:bg-moss-50 dark:border-[#5a3c2f] dark:bg-[#3a2419] dark:hover:border-[#6d4a38] dark:hover:bg-[#422a1d]"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-moss-600 text-white dark:bg-[#fde6d8] dark:text-[#bf6336]">
+                    {React.createElement(icon, { size: 16 })}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f3e4db]">{title}</p>
+                    <p className="text-xs text-[#6b7280] dark:text-[#d7b8a7]">{description}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Saved Chats</p>
-                  <p className="text-[1.65rem] font-semibold text-slate-900 dark:text-white">{isLoading ? '...' : stats.chats}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[22px] border border-slate-200/80 bg-white/70 p-4.5 dark:border-white/10 dark:bg-slate-950/35">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950">
-                  {user?.role === 'admin' ? <FileStack size={20} /> : <LayoutDashboard size={20} />}
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                    {user?.role === 'admin' ? 'Indexed PDFs' : 'Role'}
-                  </p>
-                  <p className="text-[1.65rem] font-semibold text-slate-900 dark:text-white">
-                    {user?.role === 'admin' ? (isLoading ? '...' : stats.documents) : user?.role}
-                  </p>
-                </div>
-              </div>
-            </div>
+                <ArrowRight size={16} className="text-[#8a8f99] transition group-hover:translate-x-0.5 group-hover:text-moss-700 dark:group-hover:text-[#f5d6c4]" />
+              </Link>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div className="glass-panel rounded-[26px] p-4">
-          <h3 className="text-[1.02rem] font-semibold tracking-[0.01em] text-slate-900 dark:text-white">Quick navigation</h3>
-          <div className="mt-3.5 space-y-3">
-            {quickLinks.map(({ to, title, description, icon }) => (
+      <div className="premium-card min-h-0 rounded-xl p-5 dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+        <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">Recent chats</h3>
+        <div className="mt-3 h-full max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="premium-surface h-16 animate-pulse rounded-lg dark:border-[#5a3c2f] dark:bg-[#3a2419]" />
+              ))}
+            </div>
+          ) : recentChats.length === 0 ? (
+            <div className="premium-surface rounded-lg border-dashed px-4 py-6 text-sm text-[#6b7280] dark:border-[#5a3c2f] dark:bg-[#3a2419] dark:text-[#d7b8a7]">
+              No recent conversation found.
+            </div>
+          ) : (
+            recentChats.map((chat, index) => (
               <Link
-                key={to}
-                to={to}
-                className="flex items-start justify-between gap-4 rounded-[18px] border border-slate-200/80 bg-white/75 p-3.5 transition hover:border-teal-300 hover:bg-teal-50/50 dark:border-white/10 dark:bg-white/5 dark:hover:border-teal-200/25 dark:hover:bg-white/8"
+                key={`${chat.askedAt || index}-recent`}
+                to="/chat"
+                className="premium-surface block rounded-lg px-4 py-3 transition hover:border-[#f1d2bf] hover:bg-moss-50 dark:border-[#5a3c2f] dark:bg-[#3a2419] dark:hover:border-[#6d4a38] dark:hover:bg-[#422a1d]"
               >
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950">
-                    {React.createElement(icon, { size: 18 })}
-                  </div>
-                  <div>
-                    <p className="text-[0.95rem] font-semibold tracking-[0.01em] text-slate-900 dark:text-white">{title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
-                  </div>
+                <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">
+                  <Clock3 size={12} />
+                  {chat.mode === 'compliance_review' ? 'Compliance review' : 'Chat question'}
                 </div>
-                <ArrowRight size={16} className="mt-1 shrink-0 text-slate-400" />
+                <p className="line-clamp-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f3e4db]">{chat.question}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-[#6b7280] dark:text-[#d7b8a7]">{chat.answer}</p>
               </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="glass-panel rounded-[26px] p-4">
-          <h3 className="text-[1.02rem] font-semibold tracking-[0.01em] text-slate-900 dark:text-white">Navigation guide</h3>
-          <div className="mt-3.5 grid gap-3">
-            {[
-              'Dashboard gives a summary of your account and workspace activity.',
-              'Chat is where common users and admins can ask questions from the indexed files.',
-              user?.role === 'admin'
-                ? 'Admin Uploads lets admins upload and process new PDFs.'
-                : 'Admin tools stay hidden for normal users.',
-            ].map((item) => (
-              <div key={item} className="rounded-[20px] border border-slate-200/80 bg-white/75 px-4 py-3.5 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                {item}
-              </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
     </section>
