@@ -246,12 +246,12 @@ const SearchArea = () => {
   const historyList = (
     <div className="space-y-2">
       {isLoadingHistory ? (
-        <div className="flex items-center gap-2 rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-sm text-[#6b7280] dark:border-[#5a3c2f] dark:bg-[#2f1e16] dark:text-[#d7b8a7]">
+        <div className="flex items-center gap-2 rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-sm text-[#6b7280] dark:border-[#355269] dark:bg-[#1b2c3a] dark:text-[#a9c3d8]">
           <Loader2 size={14} className="animate-spin" />
           Loading chats...
         </div>
       ) : messages.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#d8d1c5] px-3 py-3 text-sm text-[#6b7280] dark:border-[#5a3c2f] dark:text-[#c8a99a]">
+        <div className="rounded-lg border border-dashed border-[#d8d1c5] px-3 py-3 text-sm text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8]">
           No saved chats yet.
         </div>
       ) : (
@@ -266,12 +266,12 @@ const SearchArea = () => {
               setIsMobileHistoryOpen(false);
               inputRef.current?.focus();
             }}
-            className="premium-card w-full rounded-lg px-3 py-2 text-left transition hover:border-[#f1d2bf] hover:bg-moss-50 dark:hover:border-[#654534] dark:hover:bg-[#3a2419]"
+            className="premium-card w-full rounded-lg px-3 py-2 text-left transition hover:border-[#b9d8f2] hover:bg-moss-50 dark:hover:border-[#3c5c75] dark:hover:bg-[#1d3344]"
           >
-            <p className="text-[11px] uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
               {(message.mode || 'chat') === 'compliance_review' ? 'Review' : 'Chat'}
             </p>
-            <p className="line-clamp-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f3e4db]">{message.question}</p>
+            <p className="line-clamp-2 text-sm font-medium text-[#1a1a1a] dark:text-[#dce8f3]">{message.question}</p>
           </button>
         ))
       )}
@@ -279,26 +279,26 @@ const SearchArea = () => {
   );
 
   return (
-    <section className="premium-surface flex h-full min-h-0 w-full flex-1 overflow-hidden rounded-xl dark:border-[#5a3c2f] dark:bg-[#2a1a13]">
-      <aside className="hidden w-72 shrink-0 border-r border-[#e6e0d6] bg-cream-100 px-4 py-4 dark:border-[#5a3c2f] dark:bg-[#2f1e16] lg:flex lg:flex-col">
+    <section className="premium-surface flex h-full min-h-0 w-full flex-1 overflow-hidden rounded-xl dark:border-[#355269] dark:bg-[#1b2c3a]">
+      <aside className="hidden w-72 shrink-0 border-r border-[#e6e0d6] bg-cream-100 px-4 py-4 dark:border-[#355269] dark:bg-[#1b2c3a] lg:flex lg:flex-col">
         <div className="mb-4">
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">Account</p>
-          <p className="mt-1 text-sm font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">{user?.fullName}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">Account</p>
+          <p className="mt-1 text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">{user?.fullName}</p>
         </div>
         {historyList}
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#e6e0d6] bg-cream-50 px-4 dark:border-[#5a3c2f] dark:bg-[#2a1a13]">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#e6e0d6] bg-cream-50 px-4 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsMobileHistoryOpen(true)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] lg:hidden dark:border-[#5a3c2f] dark:text-[#d7b8a7]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] lg:hidden dark:border-[#355269] dark:text-[#a9c3d8]"
             >
               <History size={15} />
             </button>
-            <h2 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">MuniRules Assistant</h2>
+            <h2 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">MuniRules Assistant</h2>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -307,7 +307,7 @@ const SearchArea = () => {
               className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition ${
                 mode === 'chat'
                   ? 'premium-btn-primary'
-                  : 'premium-btn-secondary dark:text-[#d7b8a7] dark:hover:bg-[#3a2419]'
+                  : 'premium-btn-secondary dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]'
               }`}
             >
               <MessageSquareText size={14} />
@@ -319,7 +319,7 @@ const SearchArea = () => {
               className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition ${
                 mode === 'compliance_review'
                   ? 'premium-btn-primary'
-                  : 'premium-btn-secondary dark:text-[#d7b8a7] dark:hover:bg-[#3a2419]'
+                  : 'premium-btn-secondary dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]'
               }`}
             >
               <ClipboardCheck size={14} />
@@ -328,11 +328,11 @@ const SearchArea = () => {
           </div>
         </header>
 
-        <div ref={chatViewportRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-cream-100 px-4 py-5 touch-pan-y dark:bg-[#0d1612] sm:px-6">
+        <div ref={chatViewportRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-cream-100 px-4 py-5 touch-pan-y dark:bg-[#0f1820] sm:px-6">
           {messages.length === 0 && !isLoading && !error && (
             <div className="premium-card mx-auto mt-8 max-w-xl rounded-xl p-6 text-center">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">How can I help today?</h3>
-              <p className="mt-2 text-sm text-[#6b7280] dark:text-[#d7b8a7]">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">How can I help today?</h3>
+              <p className="mt-2 text-sm text-[#6b7280] dark:text-[#a9c3d8]">
                 Ask questions from indexed rules, or switch to review mode for detailed compliance checks.
               </p>
             </div>
@@ -344,7 +344,7 @@ const SearchArea = () => {
               <button
                 type="button"
                 onClick={() => askQuestion(lastSubmittedQuery, lastSubmittedMode)}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#e2ddd4] bg-cream-50 px-3 py-2 text-sm text-[#6b7280] hover:bg-moss-50 dark:border-[#5a3c2f] dark:bg-[#2f1e16] dark:text-[#d7b8a7] dark:hover:bg-[#3a2419]"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#e2ddd4] bg-cream-50 px-3 py-2 text-sm text-[#6b7280] hover:bg-moss-50 dark:border-[#355269] dark:bg-[#1b2c3a] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]"
               >
                 <RefreshCw size={14} />
                 Retry
@@ -366,19 +366,19 @@ const SearchArea = () => {
 
             {isLoading && (
               <div className="space-y-4">
-                <div className="premium-pill rounded-xl px-4 py-3 text-center dark:border-[#5a3c2f] dark:bg-[#3a2419]">
-                  <p className="text-base font-semibold uppercase tracking-[0.08em] text-moss-700 dark:text-[#f5d6c4]">Processing your query...</p>
-                  <p className="mt-1 text-sm text-[#6b7280] dark:text-[#d7b8a7]">Retrieving rule context and generating response</p>
+                <div className="premium-pill rounded-xl px-4 py-3 text-center dark:border-[#355269] dark:bg-[#1d3344]">
+                  <p className="text-base font-semibold uppercase tracking-[0.08em] text-moss-700 dark:text-[#a9d6f7]">Processing your query...</p>
+                  <p className="mt-1 text-sm text-[#6b7280] dark:text-[#a9c3d8]">Retrieving rule context and generating response</p>
                 </div>
-                <div className="h-24 animate-pulse rounded-xl border border-[#e6e0d6] bg-cream-50 dark:border-[#5a3c2f] dark:bg-[#2f1e16]" />
+                <div className="h-24 animate-pulse rounded-xl border border-[#e6e0d6] bg-cream-50 dark:border-[#355269] dark:bg-[#1b2c3a]" />
               </div>
             )}
           </div>
         </div>
 
-        <form onSubmit={handleSearch} className="shrink-0 border-t border-[#e6e0d6] bg-cream-50 px-4 py-3 dark:border-[#5a3c2f] dark:bg-[#2a1a13]">
+        <form onSubmit={handleSearch} className="shrink-0 border-t border-[#e6e0d6] bg-cream-50 px-4 py-3 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <div className="mx-auto max-w-3xl">
-            <div className="premium-input flex items-end gap-2 rounded-xl p-2 dark:bg-[#2f1e16]">
+            <div className="premium-input flex items-end gap-2 rounded-xl p-2 dark:bg-[#1b2c3a]">
               {mode === 'compliance_review' ? (
                 <textarea
                   ref={inputRef}
@@ -390,7 +390,7 @@ const SearchArea = () => {
                   }}
                   placeholder="Paste structured lines for compliance review..."
                   disabled={isLoading}
-                  className="max-h-44 min-h-20 flex-1 resize-y border-0 bg-transparent px-2 py-1 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#f3e4db] dark:placeholder:text-[#8ca79a]"
+                  className="max-h-44 min-h-20 flex-1 resize-y border-0 bg-transparent px-2 py-1 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#dce8f3] dark:placeholder:text-[#95afc4]"
                 />
               ) : (
                 <input
@@ -403,7 +403,7 @@ const SearchArea = () => {
                   }}
                   placeholder="Ask about permits, zoning, taxes, water rules..."
                   disabled={isLoading}
-                  className="h-10 flex-1 border-0 bg-transparent px-2 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#f3e4db] dark:placeholder:text-[#8ca79a]"
+                  className="h-10 flex-1 border-0 bg-transparent px-2 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#dce8f3] dark:placeholder:text-[#95afc4]"
                 />
               )}
 
@@ -414,7 +414,7 @@ const SearchArea = () => {
                 className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition ${
                   isRecording
                     ? 'border-rose-300 bg-rose-50 text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-300'
-                    : 'border-[#d9d2c8] bg-cream-50 text-[#6b7280] hover:bg-moss-50 dark:border-[#5a3c2f] dark:bg-[#2a1a13] dark:text-[#d7b8a7] dark:hover:bg-[#3a2419]'
+                    : 'border-[#cfdfec] bg-cream-50 text-[#6b7280] hover:bg-moss-50 dark:border-[#355269] dark:bg-[#1b2c3a] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]'
                 } disabled:opacity-50`}
                 aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
               >
@@ -432,8 +432,8 @@ const SearchArea = () => {
             </div>
 
             {speechError && <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{speechError}</p>}
-            {voiceDraftNotice && <p className="mt-2 text-xs text-moss-700 dark:text-[#efbb9a]">{voiceDraftNotice}</p>}
-            {isTranscribing && <p className="mt-2 text-xs text-[#6b7280] dark:text-[#c8a99a]">Transcribing voice...</p>}
+            {voiceDraftNotice && <p className="mt-2 text-xs text-moss-700 dark:text-[#a9d6f7]">{voiceDraftNotice}</p>}
+            {isTranscribing && <p className="mt-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">Transcribing voice...</p>}
           </div>
         </form>
       </div>
@@ -446,13 +446,13 @@ const SearchArea = () => {
             className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             aria-label="Close history"
           />
-          <div className="fixed inset-y-0 left-0 z-50 w-[86vw] max-w-sm border-r border-[#e6e0d6] bg-cream-50 p-4 lg:hidden dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+          <div className="fixed inset-y-0 left-0 z-50 w-[86vw] max-w-sm border-r border-[#e6e0d6] bg-cream-50 p-4 lg:hidden dark:border-[#355269] dark:bg-[#1b2c3a]">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f3e4db]">Chat history</h3>
+              <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">Chat history</h3>
               <button
                 type="button"
                 onClick={() => setIsMobileHistoryOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] dark:border-[#5a3c2f] dark:text-[#d7b8a7]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8]"
                 aria-label="Close history panel"
               >
                 <X size={15} />

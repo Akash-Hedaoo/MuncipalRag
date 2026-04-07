@@ -100,19 +100,19 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <div className="premium-pill max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-sm dark:border-[#654534] dark:bg-[#3a2419] dark:text-[#f5d6c4]">
+        <div className="premium-pill max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-sm dark:border-[#3c5c75] dark:bg-[#1d3344] dark:text-[#a9d6f7]">
           <p className="whitespace-pre-wrap break-words">{question}</p>
         </div>
       </div>
 
       <div className="flex items-start gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-moss-600 text-xs font-semibold text-white dark:bg-[#fde6d8] dark:text-[#bf6336]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-moss-600 text-xs font-semibold text-white dark:bg-[#a9d6f7] dark:text-[#0f2434]">
           AI
         </div>
 
-        <div className="premium-card w-full max-w-[85%] rounded-2xl rounded-tl-md px-4 py-3 dark:border-[#5a3c2f] dark:bg-[#2f1e16]">
+        <div className="premium-card w-full max-w-[85%] rounded-2xl rounded-tl-md px-4 py-3 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#c8a99a]">
+            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
               {mode === 'compliance_review' ? 'Compliance review' : 'Assistant'}
             </div>
             <div className="flex items-center gap-1">
@@ -120,7 +120,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                 type="button"
                 onClick={handleSpeak}
                 disabled={isSpeechLoading}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 disabled:opacity-50 dark:text-[#c8a99a] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 disabled:opacity-50 dark:text-[#a9c3d8] dark:hover:bg-[#26465d] dark:hover:text-[#dce8f3]"
                 aria-label={isSpeaking ? 'Stop speaking' : 'Speak answer'}
               >
                 {isSpeaking ? <Square size={14} /> : <Volume2 size={14} />}
@@ -128,7 +128,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
               <button
                 type="button"
                 onClick={handleCopy}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 dark:text-[#c8a99a] dark:hover:bg-[#3a2419] dark:hover:text-[#f3e4db]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 dark:text-[#a9c3d8] dark:hover:bg-[#26465d] dark:hover:text-[#dce8f3]"
                 aria-label="Copy answer"
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -136,19 +136,19 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
             </div>
           </div>
 
-          <div className={`prose prose-sm max-w-none dark:prose-invert ${isNotAvailable ? 'text-[#6b7280] italic dark:text-[#c8a99a]' : 'text-[#1a1a1a] dark:text-[#f3e4db]'}`}>
+          <div className={`prose prose-sm max-w-none dark:prose-invert ${isNotAvailable ? 'text-[#6b7280] italic dark:text-[#a9c3d8]' : 'text-[#1a1a1a] dark:text-[#dce8f3]'}`}>
             <ReactMarkdown>{displayedAnswer}</ReactMarkdown>
-            {isTyping && <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-[#f1bfa1] dark:bg-[#9b6b4f]" />}
+            {isTyping && <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-[#8ec3e8] dark:bg-[#62abdf]" />}
           </div>
 
           {audioError && <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{audioError}</p>}
 
           {!isTyping && sources && sources.length > 0 && !isNotAvailable && (
-            <div className="mt-4 border-t border-[#e6e0d6] pt-3 dark:border-[#5a3c2f]">
+            <div className="mt-4 border-t border-[#e6e0d6] pt-3 dark:border-[#355269]">
               <button
                 type="button"
                 onClick={() => setExpandedSources((value) => !value)}
-                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-moss-700 dark:text-[#d7b8a7] dark:hover:text-[#f3e4db]"
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-moss-700 dark:text-[#a9c3d8] dark:hover:text-[#dce8f3]"
               >
                 <BookOpen size={13} />
                 Sources ({sources.length})
@@ -158,12 +158,12 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
               {expandedSources && (
                 <div className="mt-3 space-y-2">
                   {sources.map((src, idx) => (
-                    <div key={idx} className="rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-xs dark:border-[#5a3c2f] dark:bg-[#3a2419]">
-                      <div className="mb-1 flex items-center justify-between text-[#6b7280] dark:text-[#c8a99a]">
+                    <div key={idx} className="rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-xs dark:border-[#355269] dark:bg-[#1d3344]">
+                      <div className="mb-1 flex items-center justify-between text-[#6b7280] dark:text-[#a9c3d8]">
                         <span>Page {src.page}</span>
                         <span>{src.section}</span>
                       </div>
-                      <p className="text-[#1a1a1a] dark:text-[#f5d6c4]">{src.text}</p>
+                      <p className="text-[#1a1a1a] dark:text-[#dce8f3]">{src.text}</p>
                     </div>
                   ))}
                 </div>

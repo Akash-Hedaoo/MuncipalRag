@@ -107,9 +107,70 @@ function safeJsonParse(text) {
   }
 }
 
+function chunkArray(items, size) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function parseRetryDelayMs(error) {
+  const retryInfo = error.response?.data?.error?.details?.find(
+    (detail) => detail?.["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
+  );
+  const retryDelay = retryInfo?.retryDelay;
+
+  if (typeof retryDelay !== "string") {
+    return null;
+  }
+
+  const seconds = Number.parseFloat(retryDelay.replace("s", ""));
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return null;
+  }
+
+  return Math.ceil(seconds * 1000);
+}
+
+async function postGeminiEmbeddingWithRetry(url, body, maxRetries = 5) {
+  let attempt = 0;
+
+  while (true) {
+    try {
+      return await axios.post(url, body, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY,
+        },
+      });
+    } catch (error) {
+      const status = error.response?.status;
+      if (status !== 429 || attempt >= maxRetries) {
+        throw error;
+      }
+
+      const retryDelayMs = parseRetryDelayMs(error) ?? 60_000;
+      console.warn(
+        `Gemini embedding quota hit (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${Math.ceil(retryDelayMs / 1000)}s...`,
+      );
+      attempt += 1;
+      await sleep(retryDelayMs);
+    }
+  }
+}
+
 async function embedQuery(text) {
   try {
-    const response = await axios.post(
+    const response = await postGeminiEmbeddingWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/${GEMINI_EMBEDDING_MODEL}:embedContent`,
       {
         model: GEMINI_EMBEDDING_MODEL,
@@ -117,12 +178,6 @@ async function embedQuery(text) {
         outputDimensionality: EMBEDDING_DIMENSION,
         content: {
           parts: [{ text }],
-        },
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
         },
       },
     );
@@ -143,29 +198,33 @@ async function batchEmbedQueries(texts) {
   }
 
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/${GEMINI_EMBEDDING_MODEL}:batchEmbedContents`,
-      {
-        requests: sanitizedTexts.map((text) => ({
-          model: GEMINI_EMBEDDING_MODEL,
-          taskType: "RETRIEVAL_QUERY",
-          outputDimensionality: EMBEDDING_DIMENSION,
-          content: {
-            parts: [{ text }],
-          },
-        })),
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
-        },
-      },
-    );
+    const MAX_BATCH_SIZE = 100;
+    const textBatches = chunkArray(sanitizedTexts, MAX_BATCH_SIZE);
+    const allEmbeddings = [];
 
-    return (response.data.embeddings ?? []).map(
-      (embedding) => embedding.values ?? [],
-    );
+    for (const batch of textBatches) {
+      const response = await postGeminiEmbeddingWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/${GEMINI_EMBEDDING_MODEL}:batchEmbedContents`,
+        {
+          requests: batch.map((text) => ({
+            model: GEMINI_EMBEDDING_MODEL,
+            taskType: "RETRIEVAL_QUERY",
+            outputDimensionality: EMBEDDING_DIMENSION,
+            content: {
+              parts: [{ text }],
+            },
+          })),
+        },
+      );
+
+      allEmbeddings.push(
+        ...(response.data.embeddings ?? []).map(
+          (embedding) => embedding.values ?? [],
+        ),
+      );
+    }
+
+    return allEmbeddings;
   } catch (error) {
     throw new Error(
       `Embedding API failed: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
@@ -175,29 +234,34 @@ async function batchEmbedQueries(texts) {
 
 async function embedDocuments(texts) {
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/${GEMINI_EMBEDDING_MODEL}:batchEmbedContents`,
-      {
-        requests: texts.map((text) => ({
-          model: GEMINI_EMBEDDING_MODEL,
-          taskType: "RETRIEVAL_DOCUMENT",
-          outputDimensionality: EMBEDDING_DIMENSION,
-          content: {
-            parts: [{ text }],
-          },
-        })),
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
-        },
-      },
-    );
+    const MAX_BATCH_SIZE = 100;
+    const sanitizedTexts = texts.map(sanitizeText).filter(Boolean);
+    const textBatches = chunkArray(sanitizedTexts, MAX_BATCH_SIZE);
+    const allEmbeddings = [];
 
-    return (response.data.embeddings ?? []).map(
-      (embedding) => embedding.values ?? [],
-    );
+    for (const batch of textBatches) {
+      const response = await postGeminiEmbeddingWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/${GEMINI_EMBEDDING_MODEL}:batchEmbedContents`,
+        {
+          requests: batch.map((text) => ({
+            model: GEMINI_EMBEDDING_MODEL,
+            taskType: "RETRIEVAL_DOCUMENT",
+            outputDimensionality: EMBEDDING_DIMENSION,
+            content: {
+              parts: [{ text }],
+            },
+          })),
+        },
+      );
+
+      allEmbeddings.push(
+        ...(response.data.embeddings ?? []).map(
+          (embedding) => embedding.values ?? [],
+        ),
+      );
+    }
+
+    return allEmbeddings;
   } catch (error) {
     throw new Error(
       `Embedding API failed: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
@@ -583,6 +647,52 @@ export async function findUploadedDocument(docId) {
   return fileName ? path.join(UPLOAD_DIR, fileName) : null;
 }
 
+async function extractTextUsingOCR(filePath) {
+  console.log("Extracting text from scanned PDF using OCR...");
+  
+  // Use Google Gemini Vision API for document text detection
+  const fileBuffer = await fs.readFile(filePath);
+  const base64Image = fileBuffer.toString("base64");
+
+  // Call Google Gemini Vision API (which has document OCR capabilities)
+  const response = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`,
+    {
+      contents: [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: "application/pdf",
+                data: base64Image,
+              },
+            },
+            {
+              text: "Extract all text from this PDF document. Return only the extracted text content without any commentary or formatting changes.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
+      },
+    },
+  );
+
+  const extractedText =
+    response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+  if (!extractedText || extractedText.length === 0) {
+    throw new Error("Gemini Vision API returned no text from the PDF.");
+  }
+
+  console.log(`OCR extraction successful. Extracted ${extractedText.length} characters.`);
+  return extractedText;
+}
+
 export async function processDocument(filePath, docId) {
   const pdfLoader = new PDFLoader(filePath);
   const rawDocs = await pdfLoader.load();
@@ -596,13 +706,35 @@ export async function processDocument(filePath, docId) {
     chunkOverlap: 200,
   });
 
+  let chunkedDocs;
+  let pageCount = readableDocs.length;
+
+  // If no readable text found, try OCR for scanned PDFs
   if (readableDocs.length === 0) {
-    throw new Error(
-      "The uploaded PDF does not contain readable text. Try a text-based PDF instead of an image/scanned PDF.",
-    );
+    console.log("No readable text found. Attempting OCR extraction...");
+    try {
+      const ocrText = await extractTextUsingOCR(filePath);
+      
+      // Create document from OCR text
+      const ocrDoc = {
+        pageContent: ocrText,
+        metadata: {
+          source: path.basename(filePath),
+          loc: { pageNumber: 1 },
+        },
+      };
+
+      chunkedDocs = await textSplitter.splitDocuments([ocrDoc]);
+      pageCount = 1; // Treat OCR'd document as single page
+    } catch (ocrError) {
+      throw new Error(
+        `The uploaded PDF does not contain readable text and OCR extraction failed: ${ocrError.message}. Please try a clearer PDF or a text-based PDF.`,
+      );
+    }
+  } else {
+    chunkedDocs = await textSplitter.splitDocuments(readableDocs);
   }
 
-  const chunkedDocs = await textSplitter.splitDocuments(readableDocs);
   const cleanedChunkedDocs = chunkedDocs.filter(
     (doc) =>
       typeof doc.pageContent === "string" && doc.pageContent.trim().length > 0,
@@ -642,6 +774,6 @@ export async function processDocument(filePath, docId) {
 
   return {
     chunkCount: records.length,
-    pageCount: readableDocs.length,
+    pageCount,
   };
 }

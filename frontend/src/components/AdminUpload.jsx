@@ -226,7 +226,7 @@ const AdminUpload = () => {
           <button
             onClick={handleUploadAndProcess}
             disabled={!file || status === 'uploading' || status === 'processing'}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-teal-300 via-cyan-300 to-amber-200 px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-teal-300 via-cyan-300 to-sky-200 px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {(status === 'uploading' || status === 'processing') ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />}
             {(status === 'uploading' || status === 'processing') ? 'Processing...' : 'Upload & Index'}
