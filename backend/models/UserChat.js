@@ -57,7 +57,36 @@ const chatItemSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: false },
+  { _id: true },
+);
+
+const chatSessionSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    mode: {
+      type: String,
+      enum: ["chat", "compliance_review"],
+      default: "chat",
+      trim: true,
+    },
+    conversations: {
+      type: [chatItemSchema],
+      default: [],
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    lastAskedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true },
 );
 
 const userChatSchema = new mongoose.Schema(
@@ -68,8 +97,8 @@ const userChatSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    chats: {
-      type: [chatItemSchema],
+    chatSessions: {
+      type: [chatSessionSchema],
       default: [],
     },
   },

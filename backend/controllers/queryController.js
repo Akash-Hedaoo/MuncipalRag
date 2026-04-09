@@ -4,12 +4,82 @@ import {
 } from "../services/ragService.js";
 import UserChat from "../models/UserChat.js";
 
+function normalizeChatItem(chat, index = 0) {
+  return {
+    id: chat?._id?.toString?.() ?? `${chat?.askedAt || Date.now()}-${index}`,
+    mode: chat?.mode || "chat",
+    question: chat?.question || "",
+    answer: chat?.answer || "",
+    sources: Array.isArray(chat?.sources) ? chat.sources : [],
+    askedAt: chat?.askedAt || null,
+  };
+}
+
+function createChatSessionTitle(sessionCount) {
+  return `Chat ${sessionCount + 1}`;
+}
+
+function normalizeChatSession(session, index = 0) {
+  const conversations = Array.isArray(session?.conversations)
+    ? session.conversations.map((chat, conversationIndex) =>
+        normalizeChatItem(chat, conversationIndex),
+      )
+    : [];
+  const latestConversation = conversations[conversations.length - 1] || null;
+
+  return {
+    id: session?._id?.toString?.() ?? `chat-${index + 1}`,
+    title: session?.title?.trim() || `Chat ${index + 1}`,
+    mode: session?.mode || latestConversation?.mode || "chat",
+    createdAt:
+      session?.createdAt || conversations[0]?.askedAt || latestConversation?.askedAt || null,
+    lastAskedAt: session?.lastAskedAt || latestConversation?.askedAt || null,
+    previewQuestion: latestConversation?.question || "",
+    previewAnswer: latestConversation?.answer || "",
+    conversationCount: conversations.length,
+    conversations,
+  };
+}
+
+async function migrateLegacyChats(userChat) {
+  if (!userChat) return userChat;
+
+  const hasSessions =
+    Array.isArray(userChat.chatSessions) && userChat.chatSessions.length > 0;
+  const rawDocument = userChat.toObject({ depopulate: true });
+  const legacyChats = Array.isArray(rawDocument?.chats) ? rawDocument.chats : [];
+
+  if (hasSessions || legacyChats.length === 0) {
+    return userChat;
+  }
+
+  const firstAskedAt = legacyChats[0]?.askedAt || new Date();
+  const lastAskedAt =
+    legacyChats[legacyChats.length - 1]?.askedAt || firstAskedAt;
+
+  userChat.chatSessions = [
+    {
+      title: createChatSessionTitle(0),
+      mode: legacyChats[0]?.mode || "chat",
+      conversations: legacyChats,
+      createdAt: firstAskedAt,
+      lastAskedAt,
+    },
+  ];
+  userChat.set("chats", undefined, { strict: false });
+
+  await userChat.save();
+
+  return userChat;
+}
+
 export async function queryKnowledgeBase(req, res) {
   try {
     const mode = req.body?.mode?.trim() || "chat";
     const query = req.body?.query?.trim();
     const submission = req.body?.submission?.trim();
     const history = req.body?.history ?? [];
+    const sessionId = req.body?.sessionId?.trim();
 
     if (mode === "compliance_review" && !submission) {
       return res.status(400).json({
@@ -39,18 +109,45 @@ export async function queryKnowledgeBase(req, res) {
       askedAt: new Date(),
     };
 
-    await UserChat.findOneAndUpdate(
-      { userId: req.user._id },
-      {
-        $setOnInsert: { userId: req.user._id },
-        $push: {
-          chats: {
-            $each: [chatItem],
-            $slice: -100,
-          },
-        },
-      },
-      { upsert: true, new: true },
+    let userChat = await UserChat.findOne({ userId: req.user._id });
+    if (!userChat) {
+      userChat = new UserChat({
+        userId: req.user._id,
+        chatSessions: [],
+      });
+    }
+
+    userChat = await migrateLegacyChats(userChat);
+
+    let targetSession =
+      sessionId && typeof userChat.chatSessions?.id === "function"
+        ? userChat.chatSessions.id(sessionId)
+        : null;
+
+    if (!targetSession || targetSession.mode !== mode) {
+      userChat.chatSessions.push({
+        title: createChatSessionTitle(userChat.chatSessions.length),
+        mode,
+        conversations: [],
+        createdAt: chatItem.askedAt,
+        lastAskedAt: chatItem.askedAt,
+      });
+      targetSession = userChat.chatSessions[userChat.chatSessions.length - 1];
+    }
+
+    targetSession.conversations.push(chatItem);
+    if (targetSession.conversations.length > 100) {
+      targetSession.conversations = targetSession.conversations.slice(-100);
+    }
+    targetSession.lastAskedAt = chatItem.askedAt;
+
+    await userChat.save();
+
+    const normalizedSession = normalizeChatSession(
+      targetSession,
+      userChat.chatSessions.findIndex(
+        (session) => session._id?.toString() === targetSession._id?.toString(),
+      ),
     );
 
     return res.json({
@@ -59,7 +156,7 @@ export async function queryKnowledgeBase(req, res) {
       answer: result.answer,
       sources: result.sources,
       review: result.review,
-      chat: chatItem,
+      chatSession: normalizedSession,
     });
   } catch (error) {
     console.error("Query route failed:", error);
@@ -73,11 +170,17 @@ export async function queryKnowledgeBase(req, res) {
 
 export async function getUserChatHistory(req, res) {
   try {
-    const userChat = await UserChat.findOne({ userId: req.user._id }).lean();
+    let userChat = await UserChat.findOne({ userId: req.user._id });
+    userChat = await migrateLegacyChats(userChat);
+    const chatSessions = Array.isArray(userChat?.chatSessions)
+      ? userChat.chatSessions.map((session, index) =>
+          normalizeChatSession(session, index),
+        )
+      : [];
 
     return res.json({
       success: true,
-      chats: userChat?.chats ?? [],
+      chatSessions,
     });
   } catch (error) {
     console.error("Get chat history route failed:", error);

@@ -23,14 +23,18 @@ const DashboardPage = () => {
         }
 
         const [historyResponse, documentsResponse] = await Promise.all(requests);
-        const chats = historyResponse.data.chats || [];
+        const chatSessions = historyResponse.data.chatSessions || [];
+        const latestSessions = chatSessions
+          .slice()
+          .sort((a, b) => new Date(b.lastAskedAt || 0).getTime() - new Date(a.lastAskedAt || 0).getTime())
+          .slice(0, 5);
 
         if (!isCancelled) {
           setStats({
-            chats: chats.length,
+            chats: chatSessions.length,
             documents: documentsResponse?.data?.documents?.length || 0,
           });
-          setRecentChats(chats.slice(-5).reverse());
+          setRecentChats(latestSessions);
         }
       } catch (error) {
         console.error(error);
@@ -141,16 +145,16 @@ const DashboardPage = () => {
           ) : (
             recentChats.map((chat, index) => (
               <Link
-                key={`${chat.askedAt || index}-recent`}
+                key={`${chat.id || index}-recent`}
                 to="/chat"
                 className="premium-surface block rounded-lg px-4 py-3 transition hover:border-[#b9d8f2] hover:bg-moss-50 dark:border-[#355269] dark:bg-[#1d3344] dark:hover:border-[#4f7391] dark:hover:bg-[#26465d]"
               >
                 <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
                   <Clock3 size={12} />
-                  {chat.mode === 'compliance_review' ? 'Compliance review' : 'Chat question'}
+                  {chat.mode === 'compliance_review' ? 'Compliance review' : 'Chat'}
                 </div>
-                <p className="line-clamp-2 text-sm font-medium text-[#1a1a1a] dark:text-[#dce8f3]">{chat.question}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">{chat.answer}</p>
+                <p className="line-clamp-1 text-sm font-medium text-[#1a1a1a] dark:text-[#dce8f3]">{chat.title}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">{chat.previewQuestion}</p>
               </Link>
             ))
           )}

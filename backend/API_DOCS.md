@@ -152,6 +152,7 @@ Request body:
 ```json
 {
   "query": "What is the zoning rule for water supply?",
+  "sessionId": "67f5c3d2f91d77f8a1a1b201",
   "history": [
     {
       "role": "user",
@@ -167,6 +168,7 @@ Request body:
 
 Notes:
 - `query` is required
+- `sessionId` is optional and appends the new exchange to an existing chat session
 - `history` is optional
 - allowed history roles are `user` and `model`
 - optional `mode` supports:
@@ -179,6 +181,7 @@ Success response:
 ```json
 {
   "success": true,
+  "mode": "chat",
   "answer": "The answer generated from the indexed PDF context.",
   "sources": [
     {
@@ -188,7 +191,26 @@ Success response:
       "score": 0.91,
       "source": "sample.pdf"
     }
-  ]
+  ],
+  "chatSession": {
+    "id": "67f5c3d2f91d77f8a1a1b201",
+    "title": "Chat 1",
+    "mode": "chat",
+    "createdAt": "2026-04-09T08:20:00.000Z",
+    "lastAskedAt": "2026-04-09T08:24:00.000Z",
+    "previewQuestion": "What is the zoning rule for water supply?",
+    "previewAnswer": "The answer generated from the indexed PDF context.",
+    "conversationCount": 2,
+    "conversations": [
+      {
+        "id": "2026-04-09T08:24:00.000Z-0",
+        "mode": "chat",
+        "question": "What is the zoning rule for water supply?",
+        "answer": "The answer generated from the indexed PDF context.",
+        "sources": []
+      }
+    ]
+  }
 }
 ```
 
@@ -206,6 +228,7 @@ Request body:
 {
   "mode": "compliance_review",
   "submission": "1. Builder must provide fire exit width of 1.5m\n2. Temporary power connection is optional\n3. Water tank capacity is 20000 litres",
+  "sessionId": "67f5c3d2f91d77f8a1a1b201",
   "history": []
 }
 ```
@@ -251,6 +274,52 @@ Notes:
 - best results come when the submission is written as separate lines or numbered points
 - the API currently reviews up to the first 25 non-empty lines
 - the response `answer` is already formatted as a plain text audit for direct chat display
+
+### `GET /api/query/history`
+
+Fetch the signed-in user's saved chat sessions.
+
+Success response:
+
+```json
+{
+  "success": true,
+  "chatSessions": [
+    {
+      "id": "67f5c3d2f91d77f8a1a1b201",
+      "title": "Chat 1",
+      "mode": "chat",
+      "createdAt": "2026-04-09T08:20:00.000Z",
+      "lastAskedAt": "2026-04-09T08:24:00.000Z",
+      "previewQuestion": "What is the zoning rule for water supply?",
+      "previewAnswer": "The answer generated from the indexed PDF context.",
+      "conversationCount": 2,
+      "conversations": [
+        {
+          "id": "2026-04-09T08:24:00.000Z-0",
+          "mode": "chat",
+          "question": "What is the zoning rule for water supply?",
+          "answer": "The answer generated from the indexed PDF context.",
+          "sources": [],
+          "askedAt": "2026-04-09T08:24:00.000Z"
+        }
+      ]
+    }
+  ],
+  "chats": [
+    {
+      "id": "2026-04-09T08:24:00.000Z-0",
+      "mode": "chat",
+      "question": "What is the zoning rule for water supply?",
+      "answer": "The answer generated from the indexed PDF context.",
+      "sources": [],
+      "askedAt": "2026-04-09T08:24:00.000Z",
+      "sessionId": "67f5c3d2f91d77f8a1a1b201",
+      "sessionTitle": "Chat 1"
+    }
+  ]
+}
+```
 
 ## Admin
 
