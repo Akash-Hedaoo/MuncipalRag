@@ -2,12 +2,14 @@ import {
   analyzeSubmissionAgainstRules,
   answerQuestion,
 } from "../services/ragService.js";
+import { translateChatSessionsAtReadTime } from "../services/translationService.js";
 import UserChat from "../models/UserChat.js";
 
 function normalizeChatItem(chat, index = 0) {
   return {
     id: chat?._id?.toString?.() ?? `${chat?.askedAt || Date.now()}-${index}`,
     mode: chat?.mode || "chat",
+    language: chat?.language || "en",
     question: chat?.question || "",
     answer: chat?.answer || "",
     sources: Array.isArray(chat?.sources) ? chat.sources : [],
@@ -31,6 +33,7 @@ function normalizeChatSession(session, index = 0) {
     id: session?._id?.toString?.() ?? `chat-${index + 1}`,
     title: session?.title?.trim() || `Chat ${index + 1}`,
     mode: session?.mode || latestConversation?.mode || "chat",
+    language: session?.language || latestConversation?.language || "en",
     createdAt:
       session?.createdAt || conversations[0]?.askedAt || latestConversation?.askedAt || null,
     lastAskedAt: session?.lastAskedAt || latestConversation?.askedAt || null,
@@ -76,6 +79,7 @@ async function migrateLegacyChats(userChat) {
 export async function queryKnowledgeBase(req, res) {
   try {
     const mode = req.body?.mode?.trim() || "chat";
+    const language = req.preferredLanguage || "en";
     const query = req.body?.query?.trim();
     const submission = req.body?.submission?.trim();
     const history = req.body?.history ?? [];
@@ -97,12 +101,13 @@ export async function queryKnowledgeBase(req, res) {
 
     const result =
       mode === "compliance_review"
-        ? await analyzeSubmissionAgainstRules(submission, history)
-        : await answerQuestion(query, history);
+        ? await analyzeSubmissionAgainstRules(submission, history, language)
+        : await answerQuestion(query, history, language);
     const userMessage = mode === "compliance_review" ? submission : query;
 
     const chatItem = {
       mode,
+      language,
       question: userMessage,
       answer: result.answer,
       sources: result.sources ?? [],
@@ -128,6 +133,7 @@ export async function queryKnowledgeBase(req, res) {
       userChat.chatSessions.push({
         title: createChatSessionTitle(userChat.chatSessions.length),
         mode,
+        language,
         conversations: [],
         createdAt: chatItem.askedAt,
         lastAskedAt: chatItem.askedAt,
@@ -136,6 +142,7 @@ export async function queryKnowledgeBase(req, res) {
     }
 
     targetSession.conversations.push(chatItem);
+    targetSession.language = language;
     if (targetSession.conversations.length > 100) {
       targetSession.conversations = targetSession.conversations.slice(-100);
     }
@@ -153,6 +160,7 @@ export async function queryKnowledgeBase(req, res) {
     return res.json({
       success: true,
       mode,
+      language,
       answer: result.answer,
       sources: result.sources,
       review: result.review,
@@ -170,16 +178,31 @@ export async function queryKnowledgeBase(req, res) {
 
 export async function getUserChatHistory(req, res) {
   try {
+    const language = req.preferredLanguage || "en";
     let userChat = await UserChat.findOne({ userId: req.user._id });
     userChat = await migrateLegacyChats(userChat);
-    const chatSessions = Array.isArray(userChat?.chatSessions)
+    const normalizedChatSessions = Array.isArray(userChat?.chatSessions)
       ? userChat.chatSessions.map((session, index) =>
           normalizeChatSession(session, index),
         )
       : [];
+    let chatSessions = normalizedChatSessions;
+
+    try {
+      chatSessions = await translateChatSessionsAtReadTime(
+        normalizedChatSessions,
+        language,
+      );
+    } catch (translationError) {
+      console.warn(
+        "History translation failed, returning original chat sessions.",
+        translationError.response?.data || translationError.message,
+      );
+    }
 
     return res.json({
       success: true,
+      language,
       chatSessions,
     });
   } catch (error) {

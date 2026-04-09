@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { BookOpen, Check, ChevronDown, ChevronUp, Copy, Square, Volume2 } from 'lucide-react';
 import api from '../lib/api.js';
+import { DEFAULT_LANGUAGE, getTranslation } from '../lib/i18n.js';
 
-const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = true }) => {
+const AnswerCard = ({ mode = 'chat', language = DEFAULT_LANGUAGE, question, answer, sources, animateTyping = true }) => {
   const [copied, setCopied] = useState(false);
   const [expandedSources, setExpandedSources] = useState(false);
   const [displayedAnswer, setDisplayedAnswer] = useState('');
@@ -12,6 +13,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
   const [isSpeechLoading, setIsSpeechLoading] = useState(false);
   const [audioError, setAudioError] = useState('');
   const audioRef = useRef(null);
+  const t = getTranslation(language);
 
   useEffect(() => {
     if (!animateTyping) {
@@ -81,21 +83,23 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
         audioRef.current = null;
       };
       audio.onerror = () => {
-        setAudioError('Audio playback failed. Please try again.');
+        setAudioError(t.audioPlaybackFailed);
         setIsSpeaking(false);
         audioRef.current = null;
       };
 
       await audio.play();
     } catch (error) {
-      setAudioError(error.response?.data?.error || error.message || 'Unable to play speech.');
+      setAudioError(error.response?.data?.error || error.message || t.audioPlayError);
       setIsSpeaking(false);
     } finally {
       setIsSpeechLoading(false);
     }
   };
 
-  const isNotAvailable = answer === 'Not available in rules';
+  const isNotAvailable =
+    answer === 'Not available in rules'
+    || answer.trim() === t.missingAnswer;
 
   return (
     <div className="space-y-4">
@@ -113,7 +117,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
         <div className="premium-card w-full max-w-[85%] rounded-2xl rounded-tl-md px-4 py-3 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <div className="mb-2 flex items-center justify-between">
             <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
-              {mode === 'compliance_review' ? 'Compliance review' : 'Assistant'}
+              {mode === 'compliance_review' ? t.complianceReview : t.assistant}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -121,7 +125,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                 onClick={handleSpeak}
                 disabled={isSpeechLoading}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 disabled:opacity-50 dark:text-[#a9c3d8] dark:hover:bg-[#26465d] dark:hover:text-[#dce8f3]"
-                aria-label={isSpeaking ? 'Stop speaking' : 'Speak answer'}
+                aria-label={isSpeaking ? t.stopSpeaking : t.speakAnswer}
               >
                 {isSpeaking ? <Square size={14} /> : <Volume2 size={14} />}
               </button>
@@ -129,7 +133,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                 type="button"
                 onClick={handleCopy}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#6b7280] transition hover:bg-moss-100 hover:text-moss-700 dark:text-[#a9c3d8] dark:hover:bg-[#26465d] dark:hover:text-[#dce8f3]"
-                aria-label="Copy answer"
+                aria-label={t.copyAnswer}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
               </button>
@@ -151,7 +155,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                 className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-moss-700 dark:text-[#a9c3d8] dark:hover:text-[#dce8f3]"
               >
                 <BookOpen size={13} />
-                Sources ({sources.length})
+                {t.sources} ({sources.length})
                 {expandedSources ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
 
@@ -160,7 +164,7 @@ const AnswerCard = ({ mode = 'chat', question, answer, sources, animateTyping = 
                   {sources.map((src, idx) => (
                     <div key={idx} className="rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-xs dark:border-[#355269] dark:bg-[#1d3344]">
                       <div className="mb-1 flex items-center justify-between text-[#6b7280] dark:text-[#a9c3d8]">
-                        <span>Page {src.page}</span>
+                        <span>{t.page} {src.page}</span>
                         <span>{src.section}</span>
                       </div>
                       <p className="text-[#1a1a1a] dark:text-[#dce8f3]">{src.text}</p>

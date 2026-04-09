@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import api from '../lib/api.js';
+import { DEFAULT_LANGUAGE, getTranslation, LANGUAGE_OPTIONS } from '../lib/i18n.js';
 import AnswerCard from './AnswerCard.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 
@@ -20,12 +21,14 @@ const normalizeChatSessions = (sessions = []) =>
     id: session.id || `chat-${sessionIndex + 1}`,
     title: session.title || `Chat ${sessionIndex + 1}`,
     mode: session.mode || 'chat',
+    language: session.language || DEFAULT_LANGUAGE,
     lastAskedAt: session.lastAskedAt || null,
     previewQuestion: session.previewQuestion || '',
     conversationCount: session.conversationCount || (session.conversations || []).length,
     conversations: (session.conversations || []).map((message, messageIndex) => ({
       id: message.id || `${message.askedAt || Date.now()}-${messageIndex}`,
       mode: message.mode || 'chat',
+      language: message.language || session.language || DEFAULT_LANGUAGE,
       question: message.question || '',
       answer: message.answer || '',
       sources: message.sources || [],
@@ -45,6 +48,10 @@ const SearchArea = () => {
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState('');
   const [lastSubmittedMode, setLastSubmittedMode] = useState('chat');
   const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
+    return window.localStorage.getItem('muni-rag-language') || DEFAULT_LANGUAGE;
+  });
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [speechError, setSpeechError] = useState('');
@@ -58,10 +65,17 @@ const SearchArea = () => {
 
   const activeSession = chatSessions.find((session) => session.id === activeSessionId) || null;
   const activeMessages = activeSession?.conversations || [];
+  const t = getTranslation(selectedLanguage);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [mode, activeSessionId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('muni-rag-language', selectedLanguage);
+    }
+  }, [selectedLanguage]);
 
   useEffect(() => {
     const supportsMediaRecording =
@@ -90,14 +104,20 @@ const SearchArea = () => {
     const loadChatHistory = async () => {
       try {
         setIsLoadingHistory(true);
-        const response = await api.get('/api/query/history');
+        const response = await api.get('/api/query/history', {
+          params: { language: selectedLanguage },
+        });
 
         if (!isCancelled) {
           const sessions = normalizeChatSessions(response.data.chatSessions || []);
           setChatSessions(sessions);
-          setActiveSessionId(sessions[sessions.length - 1]?.id || null);
+          setActiveSessionId((currentActiveSessionId) =>
+            sessions.some((session) => session.id === currentActiveSessionId)
+              ? currentActiveSessionId
+              : (sessions[sessions.length - 1]?.id || null),
+          );
 
-          if (sessions.length > 0) {
+          if (sessions.length > 0 && !activeSessionId) {
             setMode(sessions[sessions.length - 1].mode || 'chat');
           }
         }
@@ -117,7 +137,7 @@ const SearchArea = () => {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [selectedLanguage]);
 
   useEffect(() => {
     if (!chatViewportRef.current) return;
@@ -159,7 +179,10 @@ const SearchArea = () => {
     if (!questionToAsk.trim() || isLoading) return;
 
     const trimmedQuestion = questionToAsk.trim();
-    const canAppendToActiveSession = activeSession && (activeSession.mode || 'chat') === selectedMode;
+    const canAppendToActiveSession =
+      activeSession
+      && (activeSession.mode || 'chat') === selectedMode
+      && (activeSession.language || DEFAULT_LANGUAGE) === selectedLanguage;
     const history = canAppendToActiveSession
       ? activeMessages.flatMap((message) => [
           { role: 'user', text: message.question },
@@ -180,12 +203,14 @@ const SearchArea = () => {
               mode: selectedMode,
               submission: trimmedQuestion,
               history,
+              language: selectedLanguage,
               sessionId: canAppendToActiveSession ? activeSession.id : undefined,
             }
           : {
               mode: selectedMode,
               query: trimmedQuestion,
               history,
+              language: selectedLanguage,
               sessionId: canAppendToActiveSession ? activeSession.id : undefined,
             };
 
@@ -253,7 +278,7 @@ const SearchArea = () => {
       }
 
       setQuery(transcript);
-      setVoiceDraftNotice('Voice converted to text. Press Enter or click Send.');
+      setVoiceDraftNotice(t.voiceDraftNotice);
       inputRef.current?.focus();
     } catch (transcriptionError) {
       setSpeechError(transcriptionError.response?.data?.error || transcriptionError.message || 'Voice transcription failed.');
@@ -288,7 +313,7 @@ const SearchArea = () => {
 
       recorder.onstart = () => setIsRecording(true);
       recorder.onerror = () => {
-        setSpeechError('Microphone recording failed.');
+        setSpeechError(t.microphoneFailed);
         setIsRecording(false);
         stopMediaStream();
       };
@@ -303,7 +328,7 @@ const SearchArea = () => {
       mediaRecorderRef.current = recorder;
       recorder.start();
     } catch (_error) {
-      setSpeechError('Microphone permission is blocked. Please allow access.');
+      setSpeechError(t.microphoneBlocked);
       setIsRecording(false);
       stopMediaStream();
     }
@@ -317,17 +342,17 @@ const SearchArea = () => {
         className="premium-btn-primary flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
       >
         <Plus size={15} />
-        New chat
+        {t.newChat}
       </button>
 
       {isLoadingHistory ? (
         <div className="flex items-center gap-2 rounded-lg border border-[#e6e0d6] bg-cream-100 px-3 py-2 text-sm text-[#6b7280] dark:border-[#355269] dark:bg-[#1b2c3a] dark:text-[#a9c3d8]">
           <Loader2 size={14} className="animate-spin" />
-          Loading chats...
+          {t.loadingChats}
         </div>
       ) : chatSessions.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#d8d1c5] px-3 py-3 text-sm text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8]">
-          No saved chats yet.
+          {t.noSavedChats}
         </div>
       ) : (
         chatSessions
@@ -357,11 +382,11 @@ const SearchArea = () => {
                   {session.title || `Chat ${index + 1}`}
                 </p>
                 <span className="text-[11px] uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
-                  {session.mode === 'compliance_review' ? 'Review' : 'Chat'}
+                  {session.mode === 'compliance_review' ? t.reviewModeShort : t.chatModeShort}
                 </span>
               </div>
               <p className="mt-2 line-clamp-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">
-                {session.previewQuestion || 'No messages yet.'}
+                {session.previewQuestion || t.noMessagesYet}
               </p>
             </button>
           ))
@@ -373,7 +398,7 @@ const SearchArea = () => {
     <section className="premium-surface flex h-full min-h-0 w-full flex-1 overflow-hidden rounded-xl dark:border-[#355269] dark:bg-[#1b2c3a]">
       <aside className="hidden w-72 shrink-0 border-r border-[#e6e0d6] bg-cream-100 px-4 py-4 dark:border-[#355269] dark:bg-[#1b2c3a] lg:flex lg:flex-col">
         <div className="mb-4">
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">Account</p>
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">{t.account}</p>
           <p className="mt-1 text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">{user?.fullName}</p>
         </div>
         {historyList}
@@ -391,23 +416,37 @@ const SearchArea = () => {
             </button>
             <div>
               <h2 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">
-                {activeSession?.title || 'New chat'}
+                {activeSession?.title || t.newChat}
               </h2>
               <p className="text-xs text-[#6b7280] dark:text-[#a9c3d8]">
                 {activeSession
-                  ? `${activeSession.conversationCount} conversation${activeSession.conversationCount === 1 ? '' : 's'}`
-                  : 'Start a new conversation thread'}
+                  ? t.conversations(activeSession.conversationCount)
+                  : t.startConversationThread}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <label className="hidden items-center gap-2 rounded-lg border border-[#e2ddd4] px-3 text-sm text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8] sm:inline-flex">
+              <span>{t.language}</span>
+              <select
+                value={selectedLanguage}
+                onChange={(event) => setSelectedLanguage(event.target.value)}
+                className="bg-transparent text-sm outline-none"
+              >
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code} className="text-black">
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               onClick={() => startNewChat('chat')}
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e2ddd4] px-3 text-sm text-[#6b7280] transition hover:bg-moss-50 dark:border-[#355269] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]"
             >
               <Plus size={14} />
-              New
+              {t.newButton}
             </button>
             <button
               type="button"
@@ -419,7 +458,7 @@ const SearchArea = () => {
               }`}
             >
               <MessageSquareText size={14} />
-              Chat
+              {t.chatModeShort}
             </button>
             <button
               type="button"
@@ -431,7 +470,7 @@ const SearchArea = () => {
               }`}
             >
               <ClipboardCheck size={14} />
-              Review
+              {t.reviewModeShort}
             </button>
           </div>
         </header>
@@ -440,10 +479,10 @@ const SearchArea = () => {
           {activeMessages.length === 0 && !isLoading && !error && (
             <div className="premium-card mx-auto mt-8 max-w-xl rounded-xl p-6 text-center">
               <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">
-                {activeSession ? 'Continue this chat' : 'How can I help today?'}
+                {activeSession ? t.welcomeExisting : t.welcomeNew}
               </h3>
               <p className="mt-2 text-sm text-[#6b7280] dark:text-[#a9c3d8]">
-                Ask questions from indexed rules, or switch to review mode for detailed compliance checks.
+                {t.welcomeBody}
               </p>
             </div>
           )}
@@ -457,7 +496,7 @@ const SearchArea = () => {
                 className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#e2ddd4] bg-cream-50 px-3 py-2 text-sm text-[#6b7280] hover:bg-moss-50 dark:border-[#355269] dark:bg-[#1b2c3a] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]"
               >
                 <RefreshCw size={14} />
-                Retry
+                {t.retry}
               </button>
             </div>
           )}
@@ -470,6 +509,7 @@ const SearchArea = () => {
                 question={message.question}
                 answer={message.answer}
                 sources={message.sources}
+                language={message.language || activeSession?.language || selectedLanguage}
                 animateTyping={index === activeMessages.length - 1}
               />
             ))}
@@ -477,8 +517,8 @@ const SearchArea = () => {
             {isLoading && (
               <div className="space-y-4">
                 <div className="premium-pill rounded-xl px-4 py-3 text-center dark:border-[#355269] dark:bg-[#1d3344]">
-                  <p className="text-base font-semibold uppercase tracking-[0.08em] text-moss-700 dark:text-[#a9d6f7]">Processing your query...</p>
-                  <p className="mt-1 text-sm text-[#6b7280] dark:text-[#a9c3d8]">Retrieving rule context and generating response</p>
+                  <p className="text-base font-semibold uppercase tracking-[0.08em] text-moss-700 dark:text-[#a9d6f7]">{t.processingTitle}</p>
+                  <p className="mt-1 text-sm text-[#6b7280] dark:text-[#a9c3d8]">{t.processingBody}</p>
                 </div>
                 <div className="h-24 animate-pulse rounded-xl border border-[#e6e0d6] bg-cream-50 dark:border-[#355269] dark:bg-[#1b2c3a]" />
               </div>
@@ -488,6 +528,22 @@ const SearchArea = () => {
 
         <form onSubmit={handleSearch} className="shrink-0 border-t border-[#e6e0d6] bg-cream-50 px-4 py-3 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <div className="mx-auto max-w-3xl">
+            <div className="mb-2 sm:hidden">
+              <label className="flex items-center justify-between rounded-lg border border-[#e2ddd4] px-3 py-2 text-sm text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8]">
+                <span>{t.language}</span>
+                <select
+                  value={selectedLanguage}
+                  onChange={(event) => setSelectedLanguage(event.target.value)}
+                  className="bg-transparent text-sm outline-none"
+                >
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code} className="text-black">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="premium-input flex items-end gap-2 rounded-xl p-2 dark:bg-[#1b2c3a]">
               {mode === 'compliance_review' ? (
                 <textarea
@@ -498,7 +554,7 @@ const SearchArea = () => {
                     setQuery(event.target.value);
                     setVoiceDraftNotice('');
                   }}
-                  placeholder="Paste structured lines for compliance review..."
+                  placeholder={t.reviewPlaceholder}
                   disabled={isLoading}
                   className="max-h-44 min-h-20 flex-1 resize-y border-0 bg-transparent px-2 py-1 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#dce8f3] dark:placeholder:text-[#95afc4]"
                 />
@@ -511,7 +567,7 @@ const SearchArea = () => {
                     setQuery(event.target.value);
                     setVoiceDraftNotice('');
                   }}
-                  placeholder="Ask about permits, zoning, taxes, water rules..."
+                  placeholder={t.chatPlaceholder}
                   disabled={isLoading}
                   className="h-10 flex-1 border-0 bg-transparent px-2 text-sm text-[#1a1a1a] outline-none placeholder:text-[#8a8f99] disabled:opacity-50 dark:text-[#dce8f3] dark:placeholder:text-[#95afc4]"
                 />
@@ -537,13 +593,13 @@ const SearchArea = () => {
                 className="premium-btn-primary inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium transition disabled:opacity-50"
               >
                 {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-                Send
+                {t.send}
               </button>
             </div>
 
             {speechError && <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{speechError}</p>}
             {voiceDraftNotice && <p className="mt-2 text-xs text-moss-700 dark:text-[#a9d6f7]">{voiceDraftNotice}</p>}
-            {isTranscribing && <p className="mt-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">Transcribing voice...</p>}
+            {isTranscribing && <p className="mt-2 text-xs text-[#6b7280] dark:text-[#a9c3d8]">{t.transcribing}</p>}
           </div>
         </form>
       </div>
@@ -554,16 +610,16 @@ const SearchArea = () => {
             type="button"
             onClick={() => setIsMobileHistoryOpen(false)}
             className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-            aria-label="Close history"
+            aria-label={t.closeHistory}
           />
           <div className="fixed inset-y-0 left-0 z-50 w-[86vw] max-w-sm border-r border-[#e6e0d6] bg-cream-50 p-4 lg:hidden dark:border-[#355269] dark:bg-[#1b2c3a]">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">Chat history</h3>
+              <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">{t.chatHistory}</h3>
               <button
                 type="button"
                 onClick={() => setIsMobileHistoryOpen(false)}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e2ddd4] text-[#6b7280] dark:border-[#355269] dark:text-[#a9c3d8]"
-                aria-label="Close history panel"
+                aria-label={t.closeHistoryPanel}
               >
                 <X size={15} />
               </button>
