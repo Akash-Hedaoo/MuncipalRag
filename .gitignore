@@ -4,3 +4,4 @@ node_modules
 backend/.env
 frontend/.env
 .codex
+**/.codex

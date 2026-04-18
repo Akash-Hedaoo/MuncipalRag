@@ -1,6 +1,8 @@
 import axios from "axios";
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
+import { randomUUID } from "crypto";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Pinecone } from "@pinecone-database/pinecone";
@@ -8,8 +10,10 @@ import {
   EMBEDDING_DIMENSION,
   GEMINI_EMBEDDING_MODEL,
   GROQ_MODEL,
-  UPLOAD_DIR,
 } from "../config/appConfig.js";
+import { getLanguageConfig } from "../config/languages.js";
+import Document from "../models/Document.js";
+import { downloadPdfBuffer } from "./storageService.js";
 
 const pinecone = new Pinecone();
 const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
@@ -286,9 +290,11 @@ async function rewriteQuery(question, history = []) {
   }
 }
 
-function buildFallbackAnswer(context, rewrittenQuery) {
+function buildFallbackAnswer(context, rewrittenQuery, language = "en") {
+  const languageConfig = getLanguageConfig(language);
+
   if (!context.trim()) {
-    return "I could not find the answer in the provided document.";
+    return languageConfig.answerMissing;
   }
 
   const lines = context
@@ -321,11 +327,19 @@ function normalizeMatch(match, index) {
   };
 }
 
-function formatComplianceReview(review) {
+function formatComplianceReview(review, language = "en") {
+  const languageConfig = getLanguageConfig(language);
   const overallPercentage = Number.isFinite(review?.overallPercentage)
     ? Math.max(0, Math.min(100, Math.round(review.overallPercentage)))
     : 0;
-  const summary = sanitizeText(review?.summary) || "No summary was generated.";
+  const summary = sanitizeText(review?.summary)
+    || (
+      languageConfig.code === "hi"
+        ? "कोई सारांश तैयार नहीं हुआ।"
+        : languageConfig.code === "mr"
+          ? "कोणताही सारांश तयार झाला नाही."
+          : "No summary was generated."
+    );
   const correctItems = Array.isArray(review?.correctItems)
     ? review.correctItems.map(sanitizeText).filter(Boolean)
     : [];
@@ -336,25 +350,69 @@ function formatComplianceReview(review) {
     ? review.lineReviews
     : [];
 
+  const copy =
+    languageConfig.code === "hi"
+      ? {
+          overall: "कुल अनुपालन",
+          summary: "सारांश",
+          correct: "क्या सही है:",
+          wrong: "क्या गलत है या सुधार की आवश्यकता है:",
+          lineReview: "लाइन-दर-लाइन समीक्षा:",
+          noCorrect: "- दी गई सामग्री से कोई स्पष्ट सही बिंदु नहीं मिला।",
+          noWrong: "- दी गई सामग्री से कोई बड़ी समस्या नहीं मिली।",
+          noLineReview: "- कोई लाइन-दर-लाइन समीक्षा तैयार नहीं हो सकी।",
+          why: "क्यों",
+          ruleReference: "नियम संदर्भ",
+          source: "स्रोत",
+        }
+      : languageConfig.code === "mr"
+        ? {
+            overall: "एकूण अनुपालन",
+            summary: "सारांश",
+            correct: "काय बरोबर आहे:",
+            wrong: "काय चुकीचे आहे किंवा दुरुस्ती हवी आहे:",
+            lineReview: "ओळीनुसार परीक्षण:",
+            noCorrect: "- दिलेल्या मजकुरातून कोणतेही स्पष्ट बरोबर मुद्दे आढळले नाहीत.",
+            noWrong: "- दिलेल्या मजकुरातून कोणतीही मोठी समस्या आढळली नाही.",
+            noLineReview: "- ओळीनुसार परीक्षण तयार होऊ शकले नाही.",
+            why: "का",
+            ruleReference: "नियम संदर्भ",
+            source: "स्रोत",
+          }
+        : {
+            overall: "Overall compliance",
+            summary: "Summary",
+            correct: "What is correct:",
+            wrong: "What is wrong or needs correction:",
+            lineReview: "Line-by-line review:",
+            noCorrect:
+              "- No clearly correct items were identified from the provided text.",
+            noWrong: "- No major issues were highlighted from the provided text.",
+            noLineReview: "- No line-by-line review could be generated.",
+            why: "Why",
+            ruleReference: "Rule reference",
+            source: "Source",
+          };
+
   const lines = [
-    `Overall compliance: ${overallPercentage}%`,
-    `Summary: ${summary}`,
+    `${copy.overall}: ${overallPercentage}%`,
+    `${copy.summary}: ${summary}`,
     "",
-    "What is correct:",
+    copy.correct,
     ...(correctItems.length > 0
       ? correctItems.map((item) => `- ${item}`)
-      : ["- No clearly correct items were identified from the provided text."]),
+      : [copy.noCorrect]),
     "",
-    "What is wrong or needs correction:",
+    copy.wrong,
     ...(wrongItems.length > 0
       ? wrongItems.map((item) => `- ${item}`)
-      : ["- No major issues were highlighted from the provided text."]),
+      : [copy.noWrong]),
     "",
-    "Line-by-line review:",
+    copy.lineReview,
   ];
 
   if (lineReviews.length === 0) {
-    lines.push("- No line-by-line review could be generated.");
+    lines.push(copy.noLineReview);
     return lines.join("\n");
   }
 
@@ -379,10 +437,10 @@ function formatComplianceReview(review) {
     ].filter(Boolean);
 
     lines.push(`${lineNumber}. [${status} - ${percentage}%] ${lineText}`);
-    lines.push(`Why: ${explanation}`);
-    lines.push(`Rule reference: ${supportingRule}`);
+    lines.push(`${copy.why}: ${explanation}`);
+    lines.push(`${copy.ruleReference}: ${supportingRule}`);
     if (sourceParts.length > 0) {
-      lines.push(`Source: ${sourceParts.join(", ")}`);
+      lines.push(`${copy.source}: ${sourceParts.join(", ")}`);
     }
     lines.push("");
   });
@@ -390,7 +448,8 @@ function formatComplianceReview(review) {
   return lines.join("\n").trim();
 }
 
-function buildFallbackComplianceReview(submission, lineAnalyses = []) {
+function buildFallbackComplianceReview(submission, lineAnalyses = [], language = "en") {
+  const languageConfig = getLanguageConfig(language);
   const totalLines = lineAnalyses.length;
   const matchedLines = lineAnalyses.filter((line) => line.matches.length > 0);
   const overallPercentage =
@@ -400,7 +459,11 @@ function buildFallbackComplianceReview(submission, lineAnalyses = []) {
     .slice(0, 5)
     .map(
       (line) =>
-        `Line ${line.lineNumber} appears supported by the documents: "${line.lineText}"`,
+        languageConfig.code === "hi"
+          ? `लाइन ${line.lineNumber} दस्तावेज़ों से समर्थित लगती है: "${line.lineText}"`
+          : languageConfig.code === "mr"
+            ? `ओळ ${line.lineNumber} दस्तऐवजांद्वारे समर्थित दिसते: "${line.lineText}"`
+            : `Line ${line.lineNumber} appears supported by the documents: "${line.lineText}"`,
     );
 
   const wrongItems = lineAnalyses
@@ -408,15 +471,27 @@ function buildFallbackComplianceReview(submission, lineAnalyses = []) {
     .slice(0, 5)
     .map(
       (line) =>
-        `Line ${line.lineNumber} could not be verified from the indexed rules: "${line.lineText}"`,
+        languageConfig.code === "hi"
+          ? `लाइन ${line.lineNumber} को इंडेक्स किए गए नियमों से सत्यापित नहीं किया जा सका: "${line.lineText}"`
+          : languageConfig.code === "mr"
+            ? `ओळ ${line.lineNumber} इंडेक्स केलेल्या नियमांतून पडताळता आली नाही: "${line.lineText}"`
+            : `Line ${line.lineNumber} could not be verified from the indexed rules: "${line.lineText}"`,
     );
 
   return {
     overallPercentage,
     summary:
       overallPercentage === 0
-        ? "The submission could not be verified against the indexed rule documents."
-        : "This fallback review is based on retrieval matches only because structured analysis generation was unavailable.",
+        ? languageConfig.code === "hi"
+          ? "यह सबमिशन इंडेक्स किए गए नियम दस्तावेज़ों के विरुद्ध सत्यापित नहीं किया जा सका।"
+          : languageConfig.code === "mr"
+            ? "ही सबमिशन इंडेक्स केलेल्या नियम दस्तऐवजांशी पडताळता आली नाही."
+            : "The submission could not be verified against the indexed rule documents."
+        : languageConfig.code === "hi"
+          ? "यह फॉलबैक समीक्षा केवल रिट्रीवल मैच पर आधारित है क्योंकि संरचित विश्लेषण उपलब्ध नहीं था।"
+          : languageConfig.code === "mr"
+            ? "ही फॉलबॅक समीक्षा फक्त रिट्रीव्हल मॅचवर आधारित आहे कारण संरचित विश्लेषण उपलब्ध नव्हते."
+            : "This fallback review is based on retrieval matches only because structured analysis generation was unavailable.",
     correctItems,
     wrongItems,
     lineReviews: lineAnalyses.map((line) => ({
@@ -426,8 +501,16 @@ function buildFallbackComplianceReview(submission, lineAnalyses = []) {
       percentage: line.matches.length > 0 ? 60 : 0,
       explanation:
         line.matches.length > 0
-          ? "Relevant rule text was found, but the exact claim still needs a stronger model-based compliance review."
-          : "No relevant rule text was found for this line in the indexed documents.",
+          ? languageConfig.code === "hi"
+            ? "संबंधित नियम पाठ मिला, लेकिन सटीक दावे के लिए अभी भी अधिक मजबूत मॉडल-आधारित अनुपालन समीक्षा की आवश्यकता है।"
+            : languageConfig.code === "mr"
+              ? "संबंधित नियम मजकूर सापडला, पण अचूक दाव्यासाठी अजून मजबूत मॉडेल-आधारित अनुपालन परीक्षणाची गरज आहे."
+              : "Relevant rule text was found, but the exact claim still needs a stronger model-based compliance review."
+          : languageConfig.code === "hi"
+            ? "इस लाइन के लिए इंडेक्स किए गए दस्तावेज़ों में कोई संबंधित नियम पाठ नहीं मिला।"
+            : languageConfig.code === "mr"
+              ? "या ओळीसाठी इंडेक्स केलेल्या दस्तऐवजांत कोणताही संबंधित नियम मजकूर सापडला नाही."
+              : "No relevant rule text was found for this line in the indexed documents.",
       supportingRule: sanitizeText(line.matches[0]?.metadata?.text) || "",
       source: sanitizeText(line.matches[0]?.metadata?.source) || "",
       page: line.matches[0]?.metadata?.pageNumber ?? "N/A",
@@ -445,35 +528,23 @@ async function retrieveMatches(queryVector, topK = 5) {
   return searchResults.matches ?? [];
 }
 
-export async function listUploadedDocuments() {
-  const files = await fs.readdir(UPLOAD_DIR);
+export async function listUploadedDocuments(user) {
+  const filter = user?.role === "admin" ? {} : { ownerId: user?._id };
+  const documents = await Document.find(filter).sort({ createdAt: -1 }).lean();
 
-  const documents = await Promise.all(
-    files
-      .filter((fileName) => fileName.includes("__"))
-      .map(async (fileName) => {
-        const [docId, ...nameParts] = fileName.split("__");
-        const originalName = nameParts.join("__");
-        const filePath = path.join(UPLOAD_DIR, fileName);
-        const stats = await fs.stat(filePath);
-
-        return {
-          docId,
-          fileName: originalName,
-          uploadedAt: stats.mtime.toISOString(),
-          size: stats.size,
-        };
-      }),
-  );
-
-  return documents.sort(
-    (first, second) =>
-      new Date(second.uploadedAt).getTime() -
-      new Date(first.uploadedAt).getTime(),
-  );
+  return documents.map((document) => ({
+    docId: document.docId,
+    fileName: document.originalName,
+    uploadedAt: document.createdAt?.toISOString?.() || new Date().toISOString(),
+    size: document.size,
+    pages: document.pages || 0,
+    status: document.status,
+    storageKey: document.storageKey,
+  }));
 }
 
-export async function answerQuestion(question, history = []) {
+export async function answerQuestion(question, history = [], language = "en") {
+  const languageConfig = getLanguageConfig(language);
   const rewrittenQuery = await rewriteQuery(question, history);
   const queryVector = await embedQuery(rewrittenQuery);
 
@@ -492,7 +563,9 @@ export async function answerQuestion(question, history = []) {
   try {
     answer = await generateGroqText(
       `You are a helpful assistant that answers only from the provided PDF context.
-If the answer is not available in the context, reply exactly with: I could not find the answer in the provided document.
+Respond entirely in ${languageConfig.label}.
+If the answer is not available in the context, reply exactly with: ${languageConfig.answerMissing}
+Keep citations grounded in the provided context and do not introduce facts from outside it.
 
 Context:
 ${context}`,
@@ -508,7 +581,7 @@ ${context}`,
       "Groq answer generation failed, using fallback.",
       error.response?.data || error.message,
     );
-    answer = buildFallbackAnswer(context, rewrittenQuery);
+    answer = buildFallbackAnswer(context, rewrittenQuery, language);
   }
 
   return {
@@ -517,7 +590,12 @@ ${context}`,
   };
 }
 
-export async function analyzeSubmissionAgainstRules(submission, history = []) {
+export async function analyzeSubmissionAgainstRules(
+  submission,
+  history = [],
+  language = "en",
+) {
+  const languageConfig = getLanguageConfig(language);
   const normalizedSubmission = sanitizeText(submission);
 
   if (!normalizedSubmission) {
@@ -593,6 +671,7 @@ export async function analyzeSubmissionAgainstRules(submission, history = []) {
 Review the user's submission against the supplied rule evidence only.
 Do not invent rules that are not in the evidence.
 If a claim cannot be verified from the evidence, mark it as "not_found" or "incorrect".
+Return all natural-language field values in ${languageConfig.label}.
 Return valid JSON only with this shape:
 {
   "overallPercentage": number,
@@ -628,23 +707,36 @@ ${reviewContext}`,
     );
   }
 
-  const review = parsedReview || buildFallbackComplianceReview(normalizedSubmission, lineAnalyses);
+  const review =
+    parsedReview || buildFallbackComplianceReview(normalizedSubmission, lineAnalyses, language);
   const sources = dedupeBy(
     lineAnalyses.flatMap((line) => line.matches.map(normalizeMatch)),
     (item) => `${item.source}|${item.page}|${item.text}`,
   );
 
   return {
-    answer: formatComplianceReview(review),
+    answer: formatComplianceReview(review, language),
     review,
     sources,
   };
 }
 
-export async function findUploadedDocument(docId) {
-  const files = await fs.readdir(UPLOAD_DIR);
-  const fileName = files.find((file) => file.startsWith(`${docId}__`));
-  return fileName ? path.join(UPLOAD_DIR, fileName) : null;
+export async function findUploadedDocument(docId, user) {
+  const filter = { docId };
+
+  if (user?.role !== "admin") {
+    filter.ownerId = user?._id;
+  }
+
+  return Document.findOne(filter);
+}
+
+export async function deleteDocumentVectors(docId) {
+  await pineconeIndex.deleteMany({
+    filter: {
+      docId: { $eq: docId },
+    },
+  });
 }
 
 async function extractTextUsingOCR(filePath) {
@@ -693,87 +785,100 @@ async function extractTextUsingOCR(filePath) {
   return extractedText;
 }
 
-export async function processDocument(filePath, docId) {
-  const pdfLoader = new PDFLoader(filePath);
-  const rawDocs = await pdfLoader.load();
-  const readableDocs = rawDocs.filter(
-    (doc) =>
-      typeof doc.pageContent === "string" && doc.pageContent.trim().length > 0,
-  );
+export async function processDocument(document, sourceBuffer = null) {
+  const fileBuffer =
+    sourceBuffer && Buffer.isBuffer(sourceBuffer)
+      ? sourceBuffer
+      : await downloadPdfBuffer(document.storageKey);
+  const tempFilePath = path.join(os.tmpdir(), `${document.docId}-${randomUUID()}.pdf`);
 
-  const textSplitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 1000,
-    chunkOverlap: 200,
-  });
+  await fs.writeFile(tempFilePath, fileBuffer);
 
-  let chunkedDocs;
-  let pageCount = readableDocs.length;
+  try {
+    const pdfLoader = new PDFLoader(tempFilePath);
+    const rawDocs = await pdfLoader.load();
+    const readableDocs = rawDocs.filter(
+      (doc) =>
+        typeof doc.pageContent === "string" && doc.pageContent.trim().length > 0,
+    );
 
-  // If no readable text found, try OCR for scanned PDFs
-  if (readableDocs.length === 0) {
-    console.log("No readable text found. Attempting OCR extraction...");
-    try {
-      const ocrText = await extractTextUsingOCR(filePath);
-      
-      // Create document from OCR text
-      const ocrDoc = {
-        pageContent: ocrText,
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+
+    let chunkedDocs;
+    let pageCount = readableDocs.length;
+    let extractionMode = "text";
+
+    if (readableDocs.length === 0) {
+      console.log("No readable text found. Attempting OCR extraction...");
+      try {
+        const ocrText = await extractTextUsingOCR(tempFilePath);
+        extractionMode = "ocr";
+
+        const ocrDoc = {
+          pageContent: ocrText,
+          metadata: {
+            source: document.originalName,
+            loc: { pageNumber: 1 },
+          },
+        };
+
+        chunkedDocs = await textSplitter.splitDocuments([ocrDoc]);
+        pageCount = 1;
+      } catch (ocrError) {
+        throw new Error(
+          `The uploaded PDF does not contain readable text and OCR extraction failed: ${ocrError.message}. Please try a clearer PDF or a text-based PDF.`,
+        );
+      }
+    } else {
+      chunkedDocs = await textSplitter.splitDocuments(readableDocs);
+    }
+
+    const cleanedChunkedDocs = chunkedDocs.filter(
+      (doc) =>
+        typeof doc.pageContent === "string" && doc.pageContent.trim().length > 0,
+    );
+
+    if (cleanedChunkedDocs.length === 0) {
+      throw new Error("No readable content was found in this PDF.");
+    }
+
+    const chunkTexts = cleanedChunkedDocs.map((doc) => doc.pageContent.trim());
+    const vectors = await embedDocuments(chunkTexts);
+
+    const records = cleanedChunkedDocs
+      .map((doc, index) => ({
+        id: `${document.docId}-${doc.metadata.loc?.pageNumber ?? "page"}-${index}`,
+        values: vectors[index],
         metadata: {
-          source: path.basename(filePath),
-          loc: { pageNumber: 1 },
+          text: doc.pageContent.trim(),
+          source: document.originalName,
+          pageNumber: doc.metadata.loc?.pageNumber ?? null,
+          docId: document.docId,
         },
-      };
+      }))
+      .filter(
+        (record) => Array.isArray(record.values) && record.values.length > 0,
+      );
 
-      chunkedDocs = await textSplitter.splitDocuments([ocrDoc]);
-      pageCount = 1; // Treat OCR'd document as single page
-    } catch (ocrError) {
+    if (records.length === 0) {
       throw new Error(
-        `The uploaded PDF does not contain readable text and OCR extraction failed: ${ocrError.message}. Please try a clearer PDF or a text-based PDF.`,
+        "Embeddings could not be created from this PDF content. Check the PDF text and Gemini embedding API quota.",
       );
     }
-  } else {
-    chunkedDocs = await textSplitter.splitDocuments(readableDocs);
+
+    await pineconeIndex.upsert({
+      records,
+    });
+
+    return {
+      chunkCount: records.length,
+      pageCount,
+      extractionMode,
+    };
+  } finally {
+    await fs.rm(tempFilePath, { force: true });
   }
-
-  const cleanedChunkedDocs = chunkedDocs.filter(
-    (doc) =>
-      typeof doc.pageContent === "string" && doc.pageContent.trim().length > 0,
-  );
-
-  if (cleanedChunkedDocs.length === 0) {
-    throw new Error("No readable content was found in this PDF.");
-  }
-
-  const chunkTexts = cleanedChunkedDocs.map((doc) => doc.pageContent.trim());
-  const vectors = await embedDocuments(chunkTexts);
-
-  const records = cleanedChunkedDocs
-    .map((doc, index) => ({
-      id: `${docId}-${doc.metadata.loc?.pageNumber ?? "page"}-${index}`,
-      values: vectors[index],
-      metadata: {
-        text: doc.pageContent.trim(),
-        source: path.basename(filePath),
-        pageNumber: doc.metadata.loc?.pageNumber ?? null,
-        docId,
-      },
-    }))
-    .filter(
-      (record) => Array.isArray(record.values) && record.values.length > 0,
-    );
-
-  if (records.length === 0) {
-    throw new Error(
-      "Embeddings could not be created from this PDF content. Check the PDF text and Gemini embedding API quota.",
-    );
-  }
-
-  await pineconeIndex.upsert({
-    records,
-  });
-
-  return {
-    chunkCount: records.length,
-    pageCount,
-  };
 }

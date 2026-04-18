@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Clock3, MessageSquareText, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api.js';
+import { DEFAULT_LANGUAGE } from '../lib/i18n.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 const DashboardPage = () => {
@@ -16,7 +17,10 @@ const DashboardPage = () => {
     const loadStats = async () => {
       try {
         setIsLoading(true);
-        const requests = [api.get('/api/query/history')];
+        const preferredLanguage =
+          (typeof window !== 'undefined' && window.localStorage.getItem('muni-rag-language'))
+          || DEFAULT_LANGUAGE;
+        const requests = [api.get('/api/query/history', { params: { language: preferredLanguage } })];
 
         if (user?.role === 'admin') {
           requests.push(api.get('/api/admin/documents'));

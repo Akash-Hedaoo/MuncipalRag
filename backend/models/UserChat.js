@@ -48,9 +48,19 @@ const chatItemSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    language: {
+      type: String,
+      enum: ["en", "hi", "mr"],
+      default: "en",
+      trim: true,
+    },
     sources: {
       type: [sourceSchema],
       default: [],
+    },
+    review: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     askedAt: {
       type: Date,
@@ -71,6 +81,12 @@ const chatSessionSchema = new mongoose.Schema(
       type: String,
       enum: ["chat", "compliance_review"],
       default: "chat",
+      trim: true,
+    },
+    language: {
+      type: String,
+      enum: ["en", "hi", "mr"],
+      default: "en",
       trim: true,
     },
     conversations: {
