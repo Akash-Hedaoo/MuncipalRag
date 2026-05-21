@@ -644,36 +644,38 @@ const AnswerCard = ({
                   {expandedSources ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (showGraph) {
-                      setShowGraph(false);
-                      return;
-                    }
-                    if (!sessionId || !messageId) return;
-                    setIsLoadingGraph(true);
-                    try {
-                      // If it's a lawyer conflict report, show a focused conflict graph
-                      const endpoint = (hasConflicts) 
-                        ? `/api/graph/message/${sessionId}/${messageId}`
-                        : `/api/graph/session/${sessionId}`;
-                      
-                      const response = await api.get(endpoint);
-                      setGraphData(response.data.graph);
-                      setShowGraph(true);
-                    } catch (error) {
-                      console.error('Failed to load graph:', error);
-                    } finally {
-                      setIsLoadingGraph(false);
-                    }
-                  }}
-                  disabled={isLoadingGraph || !sessionId || !messageId}
-                  className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-blue-600 disabled:opacity-50 dark:text-[#a9c3d8] dark:hover:text-[#8ec3e8]"
-                >
-                  {isLoadingGraph ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                  Visualize Conflict Graph
-                </button>
+                {mode === 'lawyer' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (showGraph) {
+                        setShowGraph(false);
+                        return;
+                      }
+                      if (!sessionId || !messageId) return;
+                      setIsLoadingGraph(true);
+                      try {
+                        // If it's a lawyer conflict report, show a focused conflict graph
+                        const endpoint = (hasConflicts) 
+                          ? `/api/graph/message/${sessionId}/${messageId}`
+                          : `/api/graph/session/${sessionId}`;
+                        
+                        const response = await api.get(endpoint);
+                        setGraphData(response.data.graph);
+                        setShowGraph(true);
+                      } catch (error) {
+                        console.error('Failed to load graph:', error);
+                      } finally {
+                        setIsLoadingGraph(false);
+                      }
+                    }}
+                    disabled={isLoadingGraph || !sessionId || !messageId}
+                    className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-blue-600 disabled:opacity-50 dark:text-[#a9c3d8] dark:hover:text-[#8ec3e8]"
+                  >
+                    {isLoadingGraph ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                    Visualize Conflict Graph
+                  </button>
+                )}
               </div>
 
               {expandedSources && (
