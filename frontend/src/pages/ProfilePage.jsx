@@ -49,8 +49,8 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 flex flex-col h-full min-h-0 overflow-y-auto pr-1">
-      <div className="premium-card rounded-xl p-5 dark:border-[#355269] dark:bg-[#1b2c3a]">
+    <div className="mx-auto w-full max-w-4xl space-y-6 flex flex-col min-h-0 pr-1">
+      <div className="premium-card rounded-xl p-4 sm:p-5 dark:border-[#355269] dark:bg-[#1b2c3a]">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-moss-600 text-white dark:bg-[#a9d6f7] dark:text-[#0f2434]">
             <UserIcon size={24} />

@@ -89,7 +89,7 @@ const DashboardPage = () => {
   );
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+    <section className="grid w-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
       <div className="flex min-h-0 flex-col gap-4">
         <div className="premium-card rounded-xl p-5 dark:border-[#355269] dark:bg-[#1b2c3a]">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">Legal Command Center</p>

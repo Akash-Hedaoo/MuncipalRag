@@ -595,15 +595,16 @@ const SearchArea = () => {
             <button
               type="button"
               onClick={() => startNewChat(user?.role === 'lawyer' ? 'lawyer' : 'general')}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e2ddd4] px-3 text-sm text-[#6b7280] transition hover:bg-moss-50 dark:border-[#355269] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e2ddd4] px-2.5 text-sm text-[#6b7280] transition hover:bg-moss-50 dark:border-[#355269] dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]"
+              title={t.newButton}
             >
               <Plus size={14} />
-              {t.newButton}
+              <span className="hidden md:inline">{t.newButton}</span>
             </button>
             <button
               type="button"
               onClick={() => handleModeSwitch('general')}
-              className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition ${mode === 'general'
+              className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm transition ${mode === 'general'
                   ? 'premium-btn-primary'
                   : 'premium-btn-secondary dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]'
                 }`}
@@ -616,7 +617,7 @@ const SearchArea = () => {
               <button
                 type="button"
                 onClick={() => handleModeSwitch('lawyer')}
-                className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition ${mode === 'lawyer'
+                className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm transition ${mode === 'lawyer'
                     ? 'premium-btn-primary'
                     : 'premium-btn-secondary dark:text-[#a9c3d8] dark:hover:bg-[#1d3344]'
                   }`}
@@ -631,14 +632,14 @@ const SearchArea = () => {
                 type="button"
                 onClick={() => setShowSessionGraph(!showSessionGraph)}
                 title="Toggle Legal Knowledge Graph"
-                className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+                className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold transition ${
                   showSessionGraph
                     ? 'bg-moss-100 text-moss-700 shadow-inner dark:bg-[#26465d] dark:text-[#a9d6f7]'
                     : 'premium-btn-secondary dark:text-[#a9c3d8] dark:hover:bg-[#1d3344] shadow-sm'
                 }`}
               >
                 {isLoadingSessionGraph ? <Loader2 size={14} className="animate-spin" /> : <Network size={14} />}
-                <span className="hidden sm:inline">{showSessionGraph ? 'Close Insights' : 'Open Insights'}</span>
+                <span className="hidden sm:inline">{showSessionGraph ? 'Close' : 'Insights'}</span>
               </button>
             )}
           </div>
