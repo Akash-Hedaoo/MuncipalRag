@@ -324,11 +324,15 @@ export async function handleQuery({ query, mode, user = null, history = [] }) {
     || allDomainAnalyses[0]
     || { domain: primaryDomain, conflicts: [] };
 
-  // Step 2: Run the "Master Linker" Audit on merged conflicts
+  // Step 2: Run the "Master Linker" Audit — filters irrelevant conflicts + tags cross-domain impact
   const comparisonConflicts = await runComparisonAgent(query, conflicts);
   const auditedConflicts = (
     Array.isArray(comparisonConflicts) ? comparisonConflicts : conflicts
   ).map((item) => normalizeConflict(item, item.domain));
+
+  console.log(
+    `Lawyer pipeline: ${conflicts.length} raw conflicts → ${auditedConflicts.length} after relevance filter`,
+  );
 
   const lawyerReport = await reportAgent.generate({
     query,
