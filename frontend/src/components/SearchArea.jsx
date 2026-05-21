@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import api from '../lib/api.js';
@@ -61,6 +62,7 @@ const SearchArea = () => {
   const [speechError, setSpeechError] = useState('');
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [voiceDraftNotice, setVoiceDraftNotice] = useState('');
+  const [deletingSessionId, setDeletingSessionId] = useState(null);
   const inputRef = useRef(null);
   const chatViewportRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -227,6 +229,33 @@ const SearchArea = () => {
     fetchMessageGraph();
     return () => { isCancelled = true; };
   }, [activeSessionId, showSessionGraph]);
+
+  const deleteChatSession = async (sessionId) => {
+    if (deletingSessionId) return;
+    if (!window.confirm(t.deleteChatConfirm)) return;
+
+    try {
+      setDeletingSessionId(sessionId);
+      await api.delete(`/api/query/session/${sessionId}`);
+
+      setChatSessions((current) => {
+        const remaining = current.filter((s) => s.id !== sessionId);
+        if (activeSessionId === sessionId) {
+          const next = remaining.length > 0
+            ? remaining.sort((a, b) => new Date(b.lastAskedAt || 0) - new Date(a.lastAskedAt || 0))[0]
+            : null;
+          setActiveSessionId(next?.id || null);
+          if (next) setMode(next.mode || 'general');
+        }
+        return remaining;
+      });
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError(t.deleteChatFailed);
+    } finally {
+      setDeletingSessionId(null);
+    }
+  };
 
   const startNewChat = (nextMode = mode) => {
     setActiveSessionId(null);
@@ -435,35 +464,54 @@ const SearchArea = () => {
           .slice()
           .sort((a, b) => new Date(b.lastAskedAt || 0).getTime() - new Date(a.lastAskedAt || 0).getTime())
           .map((session, index) => (
-            <button
+            <div
               key={`${session.id}-history`}
-              type="button"
-              onClick={() => {
-                setActiveSessionId(session.id);
-                setMode(session.mode || 'general');
-                setQuery('');
-                setError(null);
-                setLastSubmittedQuery('');
-                setIsMobileHistoryOpen(false);
-                inputRef.current?.focus();
-              }}
-              className={`w-full rounded-lg border px-3 py-3 text-left transition ${session.id === activeSessionId
+              className={`group relative rounded-lg border px-3 py-3 text-left transition ${session.id === activeSessionId
                   ? 'border-[#83b9e7] bg-[#e8f3fb] dark:border-[#4f7391] dark:bg-[#1d3344]'
                   : 'premium-card hover:border-[#b9d8f2] hover:bg-moss-50 dark:hover:border-[#3c5c75] dark:hover:bg-[#1d3344]'
                 }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">
-                  {session.title || `Chat ${index + 1}`}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSessionId(session.id);
+                  setMode(session.mode || 'general');
+                  setQuery('');
+                  setError(null);
+                  setLastSubmittedQuery('');
+                  setIsMobileHistoryOpen(false);
+                  inputRef.current?.focus();
+                }}
+                className="w-full text-left"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1a1a1a] dark:text-[#dce8f3]">
+                    {session.title || `Chat ${index + 1}`}
+                  </p>
+                  <span className="shrink-0 text-[11px] uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
+                    {session.mode === 'lawyer' ? t.lawyerModeShort : t.generalModeShort}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6b7280] dark:text-[#a9c3d8]">
+                  {session.previewQuestion || t.noMessagesYet}
                 </p>
-                <span className="shrink-0 text-[11px] uppercase tracking-[0.08em] text-[#6b7280] dark:text-[#a9c3d8]">
-                  {session.mode === 'lawyer' ? t.lawyerModeShort : t.generalModeShort}
-                </span>
-              </div>
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6b7280] dark:text-[#a9c3d8]">
-                {session.previewQuestion || t.noMessagesYet}
-              </p>
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChatSession(session.id);
+                }}
+                disabled={deletingSessionId === session.id}
+                title={t.deleteChat}
+                className="absolute bottom-2 right-2 hidden h-7 w-7 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-500 opacity-0 transition-all hover:bg-rose-100 hover:text-rose-600 group-hover:flex group-hover:opacity-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 dark:hover:text-rose-300 disabled:opacity-50"
+              >
+                {deletingSessionId === session.id
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <Trash2 size={13} />
+                }
+              </button>
+            </div>
           ))
       )}
     </div>

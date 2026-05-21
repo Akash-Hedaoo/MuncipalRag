@@ -53,6 +53,9 @@ export const translations = {
     exportExcel: 'Export Excel report',
     exportFailed: 'Could not export report. Please try again.',
     exportUnavailable: 'Structured compliance review data is not available for export.',
+    deleteChat: 'Delete',
+    deleteChatConfirm: 'Delete this chat session? This cannot be undone.',
+    deleteChatFailed: 'Could not delete chat. Please try again.',
   },
   hi: {
     newChat: 'नई चैट',
@@ -100,6 +103,9 @@ export const translations = {
     exportExcel: 'Excel रिपोर्ट एक्सपोर्ट करें',
     exportFailed: 'रिपोर्ट एक्सपोर्ट नहीं हो सकी। कृपया फिर से कोशिश करें।',
     exportUnavailable: 'एक्सपोर्ट के लिए संरचित अनुपालन डेटा उपलब्ध नहीं है।',
+    deleteChat: 'हटाएँ',
+    deleteChatConfirm: 'क्या आप इस चैट सत्र को हटाना चाहते हैं? यह पूर्ववत नहीं किया जा सकता।',
+    deleteChatFailed: 'चैट हटाने में विफल। कृपया फिर से कोशिश करें।',
   },
   mr: {
     newChat: 'नवीन चॅट',
@@ -147,6 +153,9 @@ export const translations = {
     exportExcel: 'Excel अहवाल एक्सपोर्ट करा',
     exportFailed: 'अहवाल एक्सपोर्ट करता आला नाही. कृपया पुन्हा प्रयत्न करा.',
     exportUnavailable: 'एक्सपोर्टसाठी संरचित अनुपालन डेटा उपलब्ध नाही.',
+    deleteChat: 'हटवा',
+    deleteChatConfirm: 'हा चॅट सत्र हटवायचा? हे पूर्ववत करता येणार नाही.',
+    deleteChatFailed: 'चॅट हटवता आला नाही. कृपया पुन्हा प्रयत्न करा.',
   },
 };
 

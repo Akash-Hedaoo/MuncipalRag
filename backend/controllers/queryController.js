@@ -296,6 +296,54 @@ export async function exportComplianceReport(req, res) {
   }
 }
 
+export async function deleteChatSession(req, res) {
+  try {
+    const sessionId = req.params.sessionId?.trim();
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: "sessionId is required.",
+      });
+    }
+
+    const userChat = await UserChat.findOne({ userId: req.user._id });
+    if (!userChat) {
+      return res.status(404).json({
+        success: false,
+        error: "No chat history found for this user.",
+      });
+    }
+
+    const session =
+      typeof userChat.chatSessions?.id === "function"
+        ? userChat.chatSessions.id(sessionId)
+        : null;
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: "Chat session not found.",
+      });
+    }
+
+    userChat.chatSessions.pull({ _id: sessionId });
+    await userChat.save();
+
+    return res.json({
+      success: true,
+      message: "Chat session deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete chat session failed:", error);
+    return res.status(500).json({
+      success: false,
+      error:
+        error.message || "Something went wrong while deleting the chat session.",
+    });
+  }
+}
+
 export async function getUserChatHistory(req, res) {
   try {
     const language = req.preferredLanguage || "en";

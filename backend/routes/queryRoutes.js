@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteChatSession,
   exportComplianceReport,
   getUserChatHistory,
   queryKnowledgeBase,
@@ -14,6 +15,7 @@ router.use(resolvePreferredLanguage);
 
 router.get("/history", getUserChatHistory);
 router.get("/export", exportComplianceReport);
+router.delete("/session/:sessionId", deleteChatSession);
 router.post("/", queryKnowledgeBase);
 
 export default router;
