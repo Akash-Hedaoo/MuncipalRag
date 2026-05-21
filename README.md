@@ -55,6 +55,33 @@ For lawyer users, a **3D force-directed graph visualization** maps the relations
 
 ---
 
+## 🎯 Target Users
+
+This platform is purpose-built for **two distinct audiences**, each with very different needs:
+
+### 1. Common Citizens / General Users
+Everyday people who need quick, reliable legal guidance — without hiring a lawyer for simple questions.
+
+- **What they do:** Ask plain-language legal questions like *"What is the penalty for late property tax payment?"* or *"Can my landlord evict me without notice?"*
+- **What they get:** A RAG-grounded answer sourced directly from indexed legal documents, with exact page and section citations — in English, Hindi, or Marathi
+- **Why it matters:** Legal literacy in India is low. Most citizens can't afford a lawyer for basic queries. This gives them trustworthy, document-backed legal answers instantly — no jargon, no hallucination
+
+### 2. Lawyers / Legal Professionals
+Practicing lawyers who need deep, structured, multi-domain analysis for their client cases.
+
+- **What they do:** Paste an entire client report (e.g., a police complaint, a contract dispute summary, a tax notice) into **Lawyer Mode**
+- **What they get:**
+  - All 4 legal domain agents (Criminal, Civil, Corporate, Tax) scan the report **simultaneously**
+  - A structured **Conflict Report** with section-level violation cards, cross-domain impact flags, and recommended legal responses
+  - An interactive **3D Legal Knowledge Graph** showing how provisions and conflicts are connected
+  - A **Personalized Client Dashboard** that organizes all their client interactions, case sessions, and analyses — so they never lose track of a case
+  - Exportable **PDF/Excel audit reports** for court filings or client communication
+- **Why it matters:** A lawyer handling 20+ clients can't afford to manually cross-reference statutes across 4 legal domains for each case. This platform automates the entire analysis pipeline and keeps everything organized per client
+
+> **In short:** Common users get a smart legal assistant. Lawyers get an AI-powered legal war room.
+
+---
+
 ## 🏗️ System Architecture
 
 ```
